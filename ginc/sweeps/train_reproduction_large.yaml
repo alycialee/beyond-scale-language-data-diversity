@@ -1,0 +1,75 @@
+program: run_clm.py
+project: ginc-icl
+method: grid
+metric:
+  goal: minimize
+  name: test_loss
+parameters:
+  block_size:
+    values: [1024]
+  custom_embedding_size:
+    values: [ 768 ]
+  custom_num_heads:
+    values: [ 12 ]
+  custom_num_layers:
+    values: [ 16 ]
+  dataset_seed:
+    values: [1111]
+  do_eval:
+    values: [True]
+  do_train:
+    values: [True]
+  evaluation_strategy:
+    values: ['steps']
+  eval_incontext:
+    values: [True]
+  learning_rate:
+    values: [8e-4]
+  logging_steps:
+    values: [100]
+  lr_scheduler_type:
+    values: ['reduce_on_plateau']
+  model_type:
+    values: ['gpt2']
+  num_train_epochs:
+    values: [5]
+  n_hmms:
+    values: [10]
+  n_slots:
+    values: [10]
+  n_symbols:
+    values: [50, 100, 150]
+  n_values:
+    values: [10]
+  report_to:
+    values: ['wandb']
+  save_steps:
+    values: [1500]
+  save_total_limit:
+    values: [1]
+  seed:
+    values: [ 1113 ]
+  start_temp:
+    values: [10.0]
+  transition_temp:
+    values: [0.1]
+  value_identity_coeff:
+    values: [0.9]
+  warmup_steps:
+    values: [1000]
+  gradient_accumulation_steps:
+    values: [4]
+  per_device_train_batch_size:
+    values: [1]
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - ${args}
+  - "--small_model"
+  - "--custom_tokenizer"
+  - "--fp16"
+  - "--overwrite_output_dir"
+  - "--output_dir=."  # We're going to override this inside run_clm.py
+  - "--train_file=tmp.json"  # We're going to override this inside run_clm.py
+  - "--validation_file=tmp.json"  # We're going to override this inside run_clm.py
