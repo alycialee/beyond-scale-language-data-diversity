@@ -67,42 +67,8 @@ def main():
                         help="random seed for initialization")
     parser.add_argument('--overwrite_output_dir', action='store_true',
                         help="Overwrite the content of the output directory")
-
-    ## GINC parameters
-    parser.add_argument('--n_hmms', type=int, default=5)
-    parser.add_argument('--n_slots', type=int, default=10)
-    parser.add_argument('--n_symbols', type=int, default=50)
-    parser.add_argument('--n_values', type=int, default=10)
-    parser.add_argument('--dataset_seed', type=int, default=1111)
-    parser.add_argument('--n_examples', type=int, default=1000)
-    parser.add_argument('--num_tokens_per_doc', type=int, default=10240)
-    parser.add_argument("--ginc_data_dir", default=None, type=str, required=True,
-                        help="The directory that stores GINC datasets.")
     args = parser.parse_args()
-    
-    
-    if args.task_name == "ginc":
-        # num documents * num tokens per doc / max seq length
-        num_lm_dataset_ex = args.n_examples * args.num_tokens_per_doc/args.max_seq_length
-        output_dir_name = 'ginc_nhmms{}_nsymbols{}_nvalues{}_nslots{}_{}tasks_bs{}_gpt2_maxseqlen{}_nsamples{}_seed{}'.format(
-            args.n_hmms,
-            args.n_symbols,
-            args.n_values,
-            args.n_slots,
-            int(math.ceil(num_lm_dataset_ex/args.batch_size)),
-            args.batch_size,
-            args.max_seq_length,
-            args.seed
-        )
-        
-        if args.pretrained:
-            output_dir_name += "_pt"
-        else:
-            output_dir_name += "_rand"
-        if args.finetune:
-            output_dir_name += "_ft"
 
-        args.output_dir += output_dir_name
     if os.path.exists(args.output_dir) and os.listdir(
             args.output_dir) and not args.overwrite_output_dir:
         raise ValueError(
@@ -161,57 +127,17 @@ def main():
                 ds_dict[tp] = ds
         
         remove_columns = ['text', 'meta']
-    elif args.task_name == "ginc":
-        dataset_name = 'GINC_trans{}_start{}_nsymbols{}_nvalues{}_nslots{}_vic{}_nsamples{}_nhmms{}_seed{}'.format(
-            0.1, #data_args.transition_temp,
-            10.0, #data_args.start_temp,
-            args.n_symbols,
-            args.n_values,
-            args.n_slots,
-            0.9, #data_args.value_identity_coeff,
-            args.n_examples,
-            args.n_hmms,
-            args.dataset_seed
-        )
-        ginc_dataset_dir_path = os.path.join(args.ginc_data_dir, dataset_name)
-        assert os.path.isdir(ginc_dataset_dir_path), f'Dataset directory {ginc_dataset_dir_path} does not exist.'
-        print(f"GETTING GINC DATA FROM {ginc_dataset_dir_path}")
-        tokenizer_name = os.path.join(ginc_dataset_dir_path, 'tokenizer.json')
-        train_file = os.path.join(ginc_dataset_dir_path, 'train.json')
-
-        data_files = {}
-        assert train_file is not None, f'Train file {train_file} does not exist.'
-        data_files["train"] = train_file
-        extension = (
-            train_file.split(".")[-1]
-        )
-        if extension == "txt":
-            extension = "text"
-        ds = load_dataset(extension, data_files=data_files, split="train")
-
-        from transformers import PreTrainedTokenizerFast
-        eot = '[endoftext]'
-        tokenizer = PreTrainedTokenizerFast(
-                tokenizer_file=tokenizer_name,
-                bos_token=eot,
-                eos_token=eot,
-                unk_token=eot)
+    
 
     # Load GPT-2 model and tokenizer (pretrained or randomly initialized)
     if args.pretrained:
         print("USING PRETRAINED MODEL")
-        if args.task_name == "ginc":
-            model.config.vocab_size = tokenizer.vocab_size
-        else:
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=args.cache_dir if args.cache_dir else None)
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=args.cache_dir if args.cache_dir else None)
         model = GPT2LMHeadModel.from_pretrained("gpt2", cache_dir=args.cache_dir if args.cache_dir else None)
     else:
         print("USING RANDOM MODEL")
         config = AutoConfig.from_pretrained('gpt2')
-        if args.task_name == "ginc":
-            config.vocab_size = tokenizer.vocab_size
-        else:
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=args.cache_dir if args.cache_dir else None)
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=args.cache_dir if args.cache_dir else None)
         model = GPT2LMHeadModel(config)
 
     device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")

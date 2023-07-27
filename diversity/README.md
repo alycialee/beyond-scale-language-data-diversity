@@ -45,6 +45,61 @@ Run `scripts/runner_ginc.sh` to compute Task2Vec embeddings for generated GINC d
 python main_ginc.py --batch_size 512 --finetune --pretrained --cache_dir cache_dir --n_hmms=10 --n_symbols=50
 ```
 
+## Tutorial
+To compute a Task2Vec embedding of a language dataset, provide a language model as a probe network and a tokenized dataset:
+```python
+from task2vec import Task2Vec
+from datasets import load_dataset
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+
+dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+remove_columns = ["text", "timestamp", "url"]
+
+def preprocess(examples):
+    return tokenizer(examples["text"], return_tensors="pt")
+    
+batch_size = 512
+batch = dataset.take(batch_size)
+tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
+embedding, loss = Task2Vec(probe_network).embed(tokenized_batch)
+```
+The [Task2Vec](https://arxiv.org/abs/1902.03545) method computes task embeddings using the diagonal entries of the Fisher Information Matrix. Task2Vec provides two methods for computing the embedding: `montecarlo` and `variational`. In this implementation, we additionally provide an `autoregressive` mode for computing Task2Vec that uses autoregressive cross entropy loss and the `montecarlo` method. The `autoregressive` mode is enabled by default, but to run vanilla Task2Vec using `variatonal` method, you can use:
+
+```python
+Task2Vec(probe_network, method='variational').embed(dataset)
+```
+or to run vanilla Task2Vec using `montecarlo` method, you can use:
+
+```python
+Task2Vec(probe_network, method='montecarlo').embed(dataset)
+```
+
+Now, let's compute embeddings for many batches sampled randomly from the dataset. Then we can plot the distance matrix between tasks and compute the diversity coefficient:
+
+```python
+import task_similarity
+
+num_batches = 100
+buffer_size = 500_000
+seed = 1111
+embeddings = []
+for batch_num in range(num_batches):
+    print(f'--> {batch_num=}\n')
+    shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed)
+    batch = shuffled_dataset.take(batch_size)
+    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
+    embeddings.append(Task2Vec(probe_network).embed(tokenized_batch)[0])
+
+distance_matrix = task_similarity.pdist(embeddings, distance='cosine')
+task_similarity.plot_distance_matrix(embeddings, ["c4"])
+div_coeff, conf_interval = task_similarity.stats_of_distance_matrix(distance_matrix)
+```
+
 ## Additional Notes
 Running `main.py` produces the following outputs:
 - `run_args.txt`: args for this run
@@ -54,4 +109,4 @@ Running `main.py` produces the following outputs:
 
 `task2vec.py`, `task_similarity.py`, and `utils.py` were adapted from [ultimate-aws-cv-task2vec](https://github.com/brando90/ultimate-aws-cv-task2vec) and originally sourced from [aws-cv-task2vec](https://github.com/awslabs/aws-cv-task2vec). Comments `## LLM DIV` demarcate code and methods that were added or modified for computing the diversty coefficient of LM datasets.
 
-`notebooks/plot.ipynb` takes output files from running `main.py` and plots figures used in the final report.
+`notebooks/plot.ipynb` takes output files from running `main.py` and plots figures included in the arxiv preprint.

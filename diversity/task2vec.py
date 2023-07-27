@@ -86,7 +86,7 @@ class ProbeNetwork(ABC, nn.Module):
 class Task2Vec:
 
     def __init__(self, model: ProbeNetwork, skip_layers=0, max_samples=None, classifier_opts=None,
-                 method='montecarlo', method_opts=None, loader_opts=None, bernoulli=False, mode='autoregressive'): #### LLM DIV MODIFIED
+                 method='montecarlo', method_opts=None, loader_opts=None, bernoulli=False, mode='autoregressive'): ## LLM DIV
         if classifier_opts is None:
             classifier_opts = {}
         if method_opts is None:
@@ -118,19 +118,14 @@ class Task2Vec:
         ## LLM DIV
         # Cache the last layer features (needed to train the classifier) and (if needed) the intermediate layer features
         # so that we can skip the initial layers when computing the embedding
-        # dataset.train()  # I added this so that the training is done in the support set
+        # dataset.train()
         if self.mode == "autoregressive":
             loss = None
             if self.classifier_opts:
-                # print(self.classifier_opts)
                 if "finetune" in self.classifier_opts and self.classifier_opts["finetune"]:
-                    print("RUNNING FINETUNING")
                     loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples)
             else:
-                print("RUNNING FINETUNING BY DEFAULT")
                 loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples)
-            
-            print("COMPUTING FISHER")
             self.compute_fisher(dataset)
             embedding = self.extract_embedding(self.model)
             return embedding, loss
@@ -242,14 +237,12 @@ class Task2Vec:
                 
                 # The gradients used to compute the FIM needs to be for y sampled from
                 # the model distribution y ~ p_w(y|x), not for y from the dataset
-#                 print(outputs.logits[:,:-1,:].shape)
                 if self.bernoulli:
                     target = torch.bernoulli(F.sigmoid(logits[:,:-1,:])).detach()
                 else:
                     softmax_output = F.softmax(logits, dim=-1)
                     lst = [torch.multinomial(softmax_output[i,:,:], 1).detach().view(-1) for i in range(len(softmax_output))]
-                    target = torch.stack(lst, dim=0)
-#                     target = torch.multinomial(F.softmax(outputs.logits[:,:-1,:], dim=-1), 1).detach().view(-1)             
+                    target = torch.stack(lst, dim=0)          
                 
                 loss = self.loss_fn(logits, target, ignore_index=50256)
                 self.model.zero_grad()
@@ -299,8 +292,6 @@ class Task2Vec:
                     if p.grad is not None:
                         p.grad2_acc += p.grad.data ** 2
                         p.grad_counter += 1
-            #     break  # for debugging faster, otherwise FIM is really slow
-            # break  # for debugging faster, otherwise FIM is really slow
         for p in self.model.parameters():
             if p.grad_counter == 0:
                 del p.grad2_acc
@@ -308,74 +299,74 @@ class Task2Vec:
                 p.grad2_acc /= p.grad_counter
         logging.info("done")
 
-#     def _run_epoch(self, data_loader: DataLoader, model: ProbeNetwork, loss_fn,
-#                    optimizer: Optimizer, epoch: int, train: bool = True,
-#                    add_compression_loss: bool = False, skip_layers=0, beta=1.0e-7):
-#         metrics = AverageMeter()
-#         device = get_device(model)
+    def _run_epoch(self, data_loader: DataLoader, model: ProbeNetwork, loss_fn,
+                   optimizer: Optimizer, epoch: int, train: bool = True,
+                   add_compression_loss: bool = False, skip_layers=0, beta=1.0e-7):
+        metrics = AverageMeter()
+        device = get_device(model)
 
-#         for i, (input, target) in enumerate(tqdm(data_loader, leave=False, desc="Computing Fisher")):
-#             input = input.to(device)
-#             target = target.to(device)
-#             output = model(input, start_from=skip_layers)
+        for i, (input, target) in enumerate(tqdm(data_loader, leave=False, desc="Computing Fisher")):
+            input = input.to(device)
+            target = target.to(device)
+            output = model(input, start_from=skip_layers)
 
-#             loss = loss_fn(output, target)
-#             lz = beta * variational.get_compression_loss(model) if add_compression_loss else torch.zeros_like(loss)
-#             loss += lz
+            loss = loss_fn(output, target)
+            lz = beta * variational.get_compression_loss(model) if add_compression_loss else torch.zeros_like(loss)
+            loss += lz
 
-#             error = get_error(output, target)
+            error = get_error(output, target)
 
-#             metrics.update(n=input.size(0), loss=loss.item(), lz=lz.item(), error=error)
-#             if train:
-#                 optimizer.zero_grad()
-#                 loss.backward()
-#                 optimizer.step()
-#         # logging.info(
-#         print(
-#             "{}: [{epoch}] ".format('Epoch' if train else '', epoch=epoch) +
-#             "Data/Batch: {:.3f}/{:.3f} ".format(metrics.avg["data_time"], metrics.avg["batch_time"]) +
-#             "Loss {:.3f} Lz: {:.3f} ".format(metrics.avg["loss"], metrics.avg["lz"]) +
-#             "Error: {:.2f}".format(metrics.avg["error"])
-#         )
-#         return metrics.avg
+            metrics.update(n=input.size(0), loss=loss.item(), lz=lz.item(), error=error)
+            if train:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+        # logging.info(
+        print(
+            "{}: [{epoch}] ".format('Epoch' if train else '', epoch=epoch) +
+            "Data/Batch: {:.3f}/{:.3f} ".format(metrics.avg["data_time"], metrics.avg["batch_time"]) +
+            "Loss {:.3f} Lz: {:.3f} ".format(metrics.avg["loss"], metrics.avg["lz"]) +
+            "Error: {:.2f}".format(metrics.avg["error"])
+        )
+        return metrics.avg
 
-#     def variational_fisher(self, dataset: Dataset, epochs=1, beta=1e-7):
-#         logging.info("Training variational fisher...")
-#         parameters = []
-#         for layer in self.model.layers[self.skip_layers:-1]:
-#             if isinstance(layer, nn.Module):  # Skip lambda functions
-#                 variational.make_variational(layer)
-#                 parameters += variational.get_variational_vars(layer)
-#         bn_params = []
-#         # Allows batchnorm parameters to change
-#         for m in self.model.modules():
-#             if isinstance(m, nn.BatchNorm2d):
-#                 bn_params += list(m.parameters())
-#         # Avoids computing the gradients wrt to the weights to save time and memory
-#         for p in self.model.parameters():
-#             if p not in set(parameters) and p not in set(self.model.classifier.parameters()):
-#                 p.old_requires_grad = p.requires_grad
-#                 p.requires_grad = False
+    def variational_fisher(self, dataset: Dataset, epochs=1, beta=1e-7):
+        logging.info("Training variational fisher...")
+        parameters = []
+        for layer in self.model.layers[self.skip_layers:-1]:
+            if isinstance(layer, nn.Module):  # Skip lambda functions
+                variational.make_variational(layer)
+                parameters += variational.get_variational_vars(layer)
+        bn_params = []
+        # Allows batchnorm parameters to change
+        for m in self.model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                bn_params += list(m.parameters())
+        # Avoids computing the gradients wrt to the weights to save time and memory
+        for p in self.model.parameters():
+            if p not in set(parameters) and p not in set(self.model.classifier.parameters()):
+                p.old_requires_grad = p.requires_grad
+                p.requires_grad = False
 
-#         optimizer = torch.optim.Adam([
-#             {'params': parameters},
-#             {'params': bn_params, 'lr': 5e-4},
-#             {'params': self.model.classifier.parameters(), 'lr': 5e-4}],
-#             lr=1e-2, betas=(.9, 0.999))
-#         if self.skip_layers > 0:
-#             dataset = torch.utils.data.TensorDataset(self.model.layers[self.skip_layers].input_features,
-#                                                      self.model.layers[-1].targets)
-#         train_loader = _get_loader(dataset, **self.loader_opts)
+        optimizer = torch.optim.Adam([
+            {'params': parameters},
+            {'params': bn_params, 'lr': 5e-4},
+            {'params': self.model.classifier.parameters(), 'lr': 5e-4}],
+            lr=1e-2, betas=(.9, 0.999))
+        if self.skip_layers > 0:
+            dataset = torch.utils.data.TensorDataset(self.model.layers[self.skip_layers].input_features,
+                                                     self.model.layers[-1].targets)
+        train_loader = _get_loader(dataset, **self.loader_opts)
 
-#         for epoch in range(epochs):
-#             self._run_epoch(train_loader, self.model, self.loss_fn, optimizer, epoch, beta=beta,
-#                             add_compression_loss=True, train=True)
+        for epoch in range(epochs):
+            self._run_epoch(train_loader, self.model, self.loss_fn, optimizer, epoch, beta=beta,
+                            add_compression_loss=True, train=True)
 
-#         # Resets original value of requires_grad
-#         for p in self.model.parameters():
-#             if hasattr(p, 'old_requires_grad'):
-#                 p.requires_grad = p.old_requires_grad
-#                 del p.old_requires_grad
+        # Resets original value of requires_grad
+        for p in self.model.parameters():
+            if hasattr(p, 'old_requires_grad'):
+                p.requires_grad = p.old_requires_grad
+                del p.old_requires_grad
 
     def compute_fisher(self, dataset: Dataset):
         """
@@ -392,7 +383,7 @@ class Task2Vec:
 
         :param dataset: dataset with the task to compute the Fisher on
         """
-        if self.mode == 'autoregressive':
+        if self.mode == 'autoregressive' and self.method == 'montecarlo':
             fisher_fn = self.montecarlo_fisher_autoregressive
         elif self.method == 'variational':
             fisher_fn = self.variational_fisher

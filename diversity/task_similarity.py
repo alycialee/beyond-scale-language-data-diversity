@@ -236,7 +236,7 @@ def plot_distance_matrix_from_distance_matrix(distance_matrix, labels=None, show
     from scipy.spatial.distance import squareform
     import pandas as pd
     import matplotlib.pyplot as plt
-    # distance_matrix = pdist(embeddings, distance=distance)
+
     cond_distance_matrix = squareform(distance_matrix, checks=False)
     linkage_matrix = linkage(cond_distance_matrix, method='complete', optimal_ordering=True)
     if labels is not None:
@@ -355,32 +355,36 @@ def stats_of_distance_matrix(distance_matrix: np.ndarray,
     else:
         return mu, var
 
-## LLM DIV
-def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None):
+def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt
     triu = np.triu(distance_matrix)
     triu = triu[triu != 0.0]
     distance_values = triu.flatten()
-
-    plt.axvline(np.mean(distance_values), color='k', linestyle='dashed', linewidth=1)
+    
+    if grid:
+        plt.grid(zorder=0)
+    plt.axvline(np.mean(distance_values), color='k', linestyle='dashed', linewidth=1, zorder=4)
     if bins_width is not None:
-        plt.hist(distance_values, edgecolor ="black", bins=np.arange(min(distance_values), max(distance_values) + bins_width, bins_width))
+        plt.hist(distance_values, edgecolor ="black", bins=np.arange(min(distance_values), max(distance_values) + bins_width, bins_width), zorder=3)
     else:
-        plt.hist(distance_values, edgecolor ="black")
+        plt.hist(distance_values, edgecolor ="black", zorder=3)
     plt.title(title)
     plt.xlabel("Cosine Distance between Task Pairs")
     plt.ylabel("Frequency")
+
     plt.tight_layout()
     if save_file:
         _ = plt.savefig("plots/" + save_file + ".png", bbox_inches='tight')
-    plt.grid(True)
+
     if show_plot:
         plt.show()
 
 ## LLM DIV 
 # plot multiple subplots in one figure
 # distance_matrix passed in is a list of distance_matrix (np.arrays)
-def plot_multi_histogram_of_distances(distance_matrix_lst, title_lst, main_title=None, show_plot=True, save_file=None, xlabel="Cosine Distance between Task Pairs"):
+def plot_multi_histogram_of_distances(distance_matrix_lst, title_lst, main_title=None, show_plot=True, save_file=None, 
+                                      xlabel="Cosine Distance between Task Pairs", grid=True, bins_width=None, 
+                                      num_cols=2, figsize=(12,10)):
     import seaborn as sns
     from scipy.cluster.hierarchy import linkage
     from scipy.spatial.distance import squareform
@@ -388,8 +392,12 @@ def plot_multi_histogram_of_distances(distance_matrix_lst, title_lst, main_title
     import matplotlib.pyplot as plt
     import math
     
-    num_rows, num_cols = math.ceil(len(distance_matrix_lst)/2), 2
-    f, ax = plt.subplots(num_rows, num_cols, figsize=(12,10))
+    if num_cols == 2:
+        num_rows = math.ceil(len(distance_matrix_lst)/2)
+    else:
+        num_rows = math.ceil(len(distance_matrix_lst)/num_cols)
+    
+    f, ax = plt.subplots(num_rows, num_cols, figsize=figsize)
     i = 0
     for row_ind in range(num_rows):
         for col_ind in range(num_cols):
@@ -398,19 +406,31 @@ def plot_multi_histogram_of_distances(distance_matrix_lst, title_lst, main_title
             triu = np.triu(distance_matrix_lst[i])
             triu = triu[triu != 0.0]
             distance_values = triu.flatten()
+            
             if len(distance_matrix_lst) > 2:
-                ax[row_ind, col_ind].hist(distance_values, edgecolor ="black")
+                if grid:
+                    ax[row_ind, col_ind].grid(zorder=0)
+                if bins_width is not None:
+                    ax[row_ind, col_ind].hist(distance_values, edgecolor ="black", zorder=3, bins=np.arange(min(distance_values), max(distance_values) + bins_width, bins_width))
+                else:
+                    ax[row_ind, col_ind].hist(distance_values, edgecolor ="black", zorder=3)
                 ax[row_ind, col_ind].set_xlabel(xlabel)
                 ax[row_ind, col_ind].set_ylabel("Frequency")
-                ax[row_ind, col_ind].axvline(np.mean(distance_values), color='k', linestyle='dashed', linewidth=1)
+                ax[row_ind, col_ind].axvline(np.mean(distance_values), color='k', linestyle='dashed', linewidth=1, zorder=4)
                 ax[row_ind, col_ind].set_title(title_lst[i])
             else:
-                ax[col_ind].hist(distance_values, edgecolor ="black")
+                if grid:
+                    ax[col_ind].grid(zorder=0)
+                ax[col_ind].hist(distance_values, edgecolor ="black", zorder=3)
+                if bins_width is not None:
+                    ax[col_ind].hist(distance_values, edgecolor ="black", zorder=3, bins=np.arange(min(distance_values), max(distance_values) + bins_width, bins_width))
+                else:
+                    ax[col_ind].hist(distance_values, edgecolor ="black", zorder=3)
                 ax[col_ind].set_xlabel(xlabel)
                 ax[col_ind].set_ylabel("Frequency")
                 ax[col_ind].set_title(title_lst[i])
             i += 1
-    if len(distance_matrix_lst) % 2 == 1:
+    if len(distance_matrix_lst) % 2 == 1 and num_cols == 2:
         f.delaxes(ax[num_rows-1,1])
         
     if main_title:
