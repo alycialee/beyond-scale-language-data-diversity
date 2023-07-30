@@ -19,33 +19,6 @@ conda install -c conda-forge datasets
 ```
 
 ## Quick start
-Run `scripts/runner.sh` to compute 200 Task2Vec embeddings of c4, WikiText-103, and The Pile, each with batch size of 512 using pretrained finetuned network. Alternatively, you can run `main.py` directly using the following python commands:
-
-```
-# Compute embeddings for c4
-python main.py --task_name c4 --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_c4_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
-
-# Compute embeddings for WikiText-103
-python main.py --task_name wikitext --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_wt_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
-
-# Compute embeddings for The Pile
-python main.py --task_name the_pile --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_thepile_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
-```
-
-Run `scripts/runner_thepile_subdataset.sh` to compute 200 Task2Vec embeddings each for every supported sub-dataset of The Pile, each with batch size of 512 using pretrained finetuned network. Alternatively, you can run `main.py` directly to compute the embeddings for Pile-CC and Enron Emails using the following python commands:
-
-```
-# Compute embeddings for Pile-CC and Enron Emails subdatasets of The Pile
-python main.py --task_name the_pile_sametaskds --subdataset first --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_thepile_first_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
-```
-
-Run `scripts/runner_ginc.sh` to compute Task2Vec embeddings for generated GINC datasets. Alternatively, you can run `main_ginc.py` directly:
-
-```
-python main_ginc.py --batch_size 512 --finetune --pretrained --cache_dir cache_dir --n_hmms=10 --n_symbols=50
-```
-
-## Tutorial
 To compute a Task2Vec embedding of a language dataset, provide a language model as a probe network and a tokenized dataset:
 ```python
 from task2vec import Task2Vec
@@ -98,6 +71,33 @@ for batch_num in range(num_batches):
 distance_matrix = task_similarity.pdist(embeddings, distance='cosine')
 task_similarity.plot_distance_matrix(embeddings, ["c4"])
 div_coeff, conf_interval = task_similarity.stats_of_distance_matrix(distance_matrix)
+```
+
+## Usage
+Run `scripts/runner.sh` to compute 200 Task2Vec embeddings of c4, WikiText-103, and The Pile, each with batch size of 512 using pretrained finetuned network. Alternatively, you can run `main.py` directly using the following python commands:
+
+```
+# Compute embeddings for c4
+python main.py --task_name c4 --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_c4_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
+
+# Compute embeddings for WikiText-103
+python main.py --task_name wikitext --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_wt_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
+
+# Compute embeddings for The Pile
+python main.py --task_name the_pile --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_thepile_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
+```
+
+Run `scripts/runner_thepile_subdataset.sh` to compute 200 Task2Vec embeddings each for every supported sub-dataset of The Pile, each with batch size of 512 using pretrained finetuned network. Alternatively, you can run `main.py` directly to compute the embeddings for Pile-CC and Enron Emails using the following python commands:
+
+```
+# Compute embeddings for Pile-CC and Enron Emails subdatasets of The Pile
+python main.py --task_name the_pile_sametaskds --subdataset first --num_tasks 200 --batch_size 512 --buffer_size 500_000 --finetune --pretrained --output_dir output_thepile_first_200tasks_bs512_gpt2_pt_ft --cache_dir cache_dir
+```
+
+Run `scripts/runner_ginc.sh` to compute Task2Vec embeddings for generated GINC datasets. Alternatively, you can run `main_ginc.py` directly:
+
+```
+python main_ginc.py --batch_size 512 --finetune --pretrained --cache_dir cache_dir --n_hmms=10 --n_symbols=50
 ```
 
 ## Additional Notes
