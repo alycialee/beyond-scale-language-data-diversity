@@ -67,6 +67,7 @@ def test_diversity_coefficient():
 
     # -- Get data set
     dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    print(f'{type(dataset)}=') 
     remove_columns = ["text", "timestamp", "url"]
     def preprocess(examples):
         tokenized_examples = tokenizer(examples["text"], return_tensors="pt")
@@ -84,7 +85,6 @@ def test_diversity_coefficient():
         np.save(output_dir / 'distance_matrix.npy', results['distance_matrix'])
         np.save(output_dir / 'results.npy', results)
 
-    
 
 if __name__ == '__main__':
     # run tests and time it
