@@ -354,6 +354,14 @@ def stats_of_distance_matrix(distance_matrix: np.ndarray,
         return mu, var, total
     else:
         return mu, var
+    
+def diversity_coefficient(distance_matrix: np.ndarray,
+                          remove_diagonal: bool = True,
+                          variance_type: str = 'ci_0.95',
+                          get_total: bool = False,
+                          ) -> tuple[float, float]:
+    div_coeff, conf_interval = stats_of_distance_matrix(distance_matrix, remove_diagonal, variance_type, get_total)
+    return 
 
 def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt
@@ -378,6 +386,7 @@ def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=Tr
 
     if show_plot:
         plt.show()
+
 
 ## LLM DIV 
 # plot multiple subplots in one figure
