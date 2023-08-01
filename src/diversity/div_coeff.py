@@ -69,9 +69,11 @@ def test_diversity_coefficient():
     dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
     remove_columns = ["text", "timestamp", "url"]
     def preprocess(examples):
-        return tokenizer(examples["text"], return_tensors="pt")
-    def get_mapped_batch(batched=True, remove_columns=remove_columns):
-        return dataset.map(preprocess, batched=True, remove_columns=remove_columns)
+        tokenized_examples = tokenizer(examples["text"], return_tensors="pt")
+        return tokenized_examples 
+    def get_mapped_batch(preprocess=preprocess, batched=True, remove_columns=remove_columns):
+        batch = dataset.map(preprocess, batched=True, remove_columns=remove_columns)
+        return batch 
     
     # -- Compute diversity coefficient
     results = diversity_coefficient(dataset, get_mapped_batch, probe_network)
