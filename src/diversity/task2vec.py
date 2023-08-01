@@ -19,11 +19,13 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.optim import Optimizer
 import numpy as np
 from tqdm.auto import tqdm, trange
 import logging
 from torch.utils.data import DataLoader, Dataset
-from utils import AverageMeter, get_error, get_device
+
+from diversity.utils import AverageMeter, get_error, get_device
 
 ## LLM DIV
 def set_seed(seed):

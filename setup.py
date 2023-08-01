@@ -36,7 +36,7 @@ setup(
     license='Apache 2.0',
 
     # currently
-    package_dir={'diversity': 'diversity', 'ginc': 'ginc'},
+    package_dir={'': 'src'},
     packages=find_packages(include=['diversity*', 'ginc*']),  # imports all modules/folders with  __init__.py & python files,
 
     # for pytorch see doc string at the top of file
