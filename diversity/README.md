@@ -72,6 +72,18 @@ distance_matrix = task_similarity.pdist(embeddings, distance='cosine')
 task_similarity.plot_distance_matrix(embeddings, ["c4"])
 div_coeff, conf_interval = task_similarity.stats_of_distance_matrix(distance_matrix)
 ```
+or with the following function and store your results somewhere
+```python
+div_coeff, conf_interval = task_similarity.diversity_coefficient(distance_matrix)
+
+from pathlib import Path
+output_dir = Path('./').expanduser()
+np.save(output_dir / 'distance_matrix.npy', distance_matrix)
+results: dict = {'embeddings': [embed for embed in embeddings],
+                'distance_matrix': distance_matrix,
+                "num_batches": args.num_batches}
+np.save(output_dir / 'results.npy', results)
+```
 
 ## Usage
 Run `scripts/runner.sh` to compute 200 Task2Vec embeddings of c4, WikiText-103, and The Pile, each with batch size of 512 using pretrained finetuned network. Alternatively, you can run `main.py` directly using the following python commands:

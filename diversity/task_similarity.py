@@ -361,7 +361,7 @@ def diversity_coefficient(distance_matrix: np.ndarray,
                           get_total: bool = False,
                           ) -> tuple[float, float]:
     div_coeff, conf_interval = stats_of_distance_matrix(distance_matrix, remove_diagonal, variance_type, get_total)
-    return 
+    return div_coeff, conf_interval
 
 def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt
