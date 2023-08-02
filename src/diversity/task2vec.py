@@ -192,7 +192,6 @@ class Task2Vec:
                 optimizer.zero_grad()
                 inputs = {'input_ids': batch['input_ids'].to(device),
                         'attention_mask': batch['attention_mask'].to(device)}
-                assert inputs['input_ids'].is_cuda
                 logits = self.model(**inputs, labels=inputs["input_ids"]).logits
                 loss = self.loss_fn(logits, inputs["input_ids"], ignore_index=50256)
                 error = get_error(logits, inputs['input_ids'], ignore_index=50256)
