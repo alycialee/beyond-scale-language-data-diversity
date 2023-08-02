@@ -164,7 +164,7 @@ class Task2Vec:
         device = next(self.model.parameters()).device
         print("MODEL DEVICE: ", device)
         
-        num_examples = int(classifier_opts.get("task_batch_size") / loader_opts.get('batch_size', 8))
+        num_examples = int(classifier_opts.get("task_batch_size", 512) / loader_opts.get('batch_size', 8))
         n_batches = num_examples
         
         optimizer_grouped_parameters = [
@@ -221,7 +221,7 @@ class Task2Vec:
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
         device = get_device(self.model)
-        n_batches = int(self.classifier_opts.get("task_batch_size") / loader_opts.get('batch_size', 8))
+        n_batches = int(self.classifier_opts.get("task_batch_size", 512) / loader_opts.get('batch_size', 8))
         logging.info("Computing Fisher...")
 
         for p in self.model.parameters():

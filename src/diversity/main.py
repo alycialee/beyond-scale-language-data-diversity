@@ -51,7 +51,7 @@ def main():
                         help="Break after 1 iteration.")
     parser.add_argument("--buffer_size", default=10_000, type=int,
                         help="Buffer size for streamed data.")
-    parser.add_argument("--batch_size", default=128, type=int,
+    parser.add_argument("--batch_size", default=512, type=int,
                         help="Batch size per GPU/CPU for training.")
     parser.add_argument("--learning_rate", default=5e-5, type=float,
                         help="The initial learning rate for Adam.")
