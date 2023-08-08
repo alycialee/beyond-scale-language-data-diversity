@@ -5,6 +5,8 @@ GPT4 suggested this: https://chat.openai.com/share/495de296-71c2-4f5e-83e2-3b22d
 It also would have made all the data set interfaces consistent in training vs computing data set metrics.
 """
 from pathlib import Path
+import datetime
+import json
 
 from torch import nn
 import numpy as np
@@ -19,7 +21,7 @@ def get_diversity_coefficient(dataset,
                             probe_network: nn.Module,
                             tokenizer = None,
                             batch_size: int = 512,
-                            num_batches: int = 100, 
+                            num_batches: int = 600, 
                             seed = 0, 
                             buffer_size: int = 500_000, 
                             distance = 'cosine',
@@ -146,41 +148,6 @@ def test_get_batch_from_dataset():
     # tokenized_batch=<datasets.iterable_dataset.IterableDataset object at 0x7ff2901889d0>
     # Time it took: 0.9143445491790771 seconds
 
-def test_diversity_coefficient():
-    # -- Get probe network
-    from datasets import load_dataset
-    import torch
-    from transformers import GPT2Tokenizer, GPT2LMHeadModel
-
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
-    probe_network = probe_network.to(device)
-
-    # -- Get data set
-    dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    remove_columns = ["text", "timestamp", "url"]
-    def preprocess(examples):
-        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    # batch = dataset.take(batch_size)
-    def map(batch):
-        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
-
-    # -- Compute diversity coefficient
-    results = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)
-    div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
-    print(f'{div_coeff=} {div_coeff_ci=}')
-
-    # -- Save results or not
-    # save_results = False
-    # if save_results:
-    #     output_dir = Path('./').expanduser()
-    #     np.save(output_dir / 'distance_matrix.npy', results['distance_matrix'])
-    #     np.save(output_dir / 'results.npy', results)
-
 def alycias_original_colab_code():
     """ https://colab.research.google.com/drive/1pL1JmE2LuRg5ClsZ7htFyzEAJ7iMEcys#scrollTo=aRI6a_27Tzd0 """
     # -- Get probe network
@@ -239,12 +206,56 @@ def alycias_original_colab_code():
     import numpy as np
     from pathlib import Path
 
-    # output_dir = Path('./').expanduser()
-    # np.save(output_dir / 'distance_matrix.npy', distance_matrix)
-    # results: dict = {'embeddings': [embed for embed in embeddings],
-    #                 'distance_matrix': distance_matrix,
-    #                 "num_batches": num_batches}
-    # np.save(output_dir / 'results.npy', results)    
+    output_dir = Path('./').expanduser()
+    np.save(output_dir / 'distance_matrix.npy', distance_matrix)
+    results: dict = {'embeddings': [embed for embed in embeddings],
+                    'distance_matrix': distance_matrix,
+                    "num_batches": num_batches}
+    np.save(output_dir / 'results.npy', results)    
+
+def test_diversity_coefficient():
+    # -- Get probe network
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get data set
+    dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    remove_columns = ["text", "timestamp", "url"]
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    # batch = dataset.take(batch_size)
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
+    # -- Compute diversity coefficient
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network)
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)  # only for debugging
+    div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
+    print(f'{div_coeff=} {div_coeff_ci=}')
+
+    # -- Save results or not
+    save_results = True
+    if save_results:
+        today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%H_%M')
+        output_dir = Path(f'~/data/div_coeff/{today}').expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        np.save(output_dir / f'distance_matrix{today}.npy', results['distance_matrix'])
+        np.save(output_dir / f'results{today}.npy', results)
+        # Save results as a pretty-printed JSON
+        results = {key: str(value) for key, value in results.items()}
+        with open(output_dir / f'results{today}.json', 'w') as f:
+            json.dump(results, f, indent=4)
+
+# -- Experiments
 
 def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights():
     """
