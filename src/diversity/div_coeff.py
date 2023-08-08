@@ -15,15 +15,15 @@ from diversity.task2vec import Task2Vec
 import diversity.task_similarity as task_similarity
 
 def get_diversity_coefficient(dataset,
-                          map_batch: callable,  # to ease whatever ars you want to batch.map for any data set
-                          probe_network: nn.Module,
-                          tokenizer = None,
-                          batch_size: int = 512,
-                          num_batches: int = 100, 
-                          seed = 0, 
-                          buffer_size: int = 500_000, 
-                          distance = 'cosine',
-                          verbose: bool = True,
+                            map: callable,  # to ease whatever ars you want to batch.map for any data set
+                            probe_network: nn.Module,
+                            tokenizer = None,
+                            batch_size: int = 512,
+                            num_batches: int = 100, 
+                            seed = 0, 
+                            buffer_size: int = 500_000, 
+                            distance = 'cosine',
+                            verbose: bool = True,
                           ) -> dict:
     """
     Compute the diversity coefficient of a dataset using a probe network.
@@ -31,25 +31,29 @@ def get_diversity_coefficient(dataset,
     If you want the diveristy coefficient and it's confidence interval (ci), use the following:
         div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     """
+    if num_batches < 3:
+        print(f'Warning: num_batches must be >= 3, but got {num_batches=} otherwise you only get 1 comparison so 1 distance value')
     # - Compute embeddings
-    embeddings = []
-    losses = []
+    embeddings, losses = [], []
     for batch_num in range(num_batches):
+        print(f'--> {batch_num=}\n') if verbose else None
         # - Get batch
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed)
         raw_text_batch = dataset.take(batch_size)
-        tokenized_batch = map_batch(raw_text_batch)
-        print(f'{type(tokenized_batch)=}')
-        print(f'{next(iter(tokenized_batch))=}')
+        tokenized_batch = map(raw_text_batch)
+        # if verbose:
+        #     print(f'{type(tokenized_batch)=}')
+        #     print(f'{next(iter(tokenized_batch))=}')
 
         # - Get Task2Vec embedding for batch
-        batch_embedding, batch_loss = Task2Vec(probe_network).embed(tokenized_batch)
+        # embedding, batch_loss = Task2Vec(probe_network).embed(tokenized_batch)
+        embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
         if verbose:
-            print(f'{batch_num=}, {batch_loss=}')
-            print(f'{batch_embedding=}')
+            print(f'{loss=}')
+            print(f'{embedding=}')
         
         # - Collect results
-        embeddings.append(batch_embedding)
+        embeddings.append(embedding)
         losses.append(loss)
         
     # - Compute diversity coefficient
@@ -144,26 +148,29 @@ def test_get_batch_from_dataset():
 
 def test_diversity_coefficient():
     # -- Get probe network
+    from datasets import load_dataset
+    import torch
     from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
-        print(f'{tokenizer.pad_token=}')
     probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    print(f'{type(probe_network)}=')
-    print(f'{type(tokenizer)}=')
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
 
     # -- Get data set
     dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    padding="max_length"; max_seq_length=128; trucation=True; return_tensors="pt"
-    def preprocess(examples, padding=padding, max_seq_length=max_seq_length, trucation=trucation, return_tensors=return_tensors):
-        return tokenizer(examples["text"], padding=padding, max_length=max_seq_length, trucation=trucation, return_tensors=return_tensors)
-    batched=True; remove_columns = ["text", "timestamp", "url"]
-    def map_batch(batch, batched=batched, remove_columns=remove_columns):
-        return batch.map(preprocess, batched=batched, remove_columns=remove_columns)
-    
+    remove_columns = ["text", "timestamp", "url"]
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    # batch = dataset.take(batch_size)
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
     # -- Compute diversity coefficient
-    results = get_diversity_coefficient(dataset, map_batch, probe_network)
+    results = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
 
@@ -173,6 +180,71 @@ def test_diversity_coefficient():
     #     output_dir = Path('./').expanduser()
     #     np.save(output_dir / 'distance_matrix.npy', results['distance_matrix'])
     #     np.save(output_dir / 'results.npy', results)
+
+def alycias_original_colab_code():
+    """ https://colab.research.google.com/drive/1pL1JmE2LuRg5ClsZ7htFyzEAJ7iMEcys#scrollTo=aRI6a_27Tzd0 """
+    # -- Get probe network
+    from diversity.task2vec import Task2Vec
+
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get data set & data batch (as a data set obj)
+    dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    remove_columns = ["text", "timestamp", "url"]
+    max_seq_length = 128
+    batch_size = 512
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=max_seq_length, truncation=True, return_tensors="pt")
+    batch = dataset.take(batch_size)
+    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
+    # embedding, loss = Task2Vec(probe_network).embed(tokenized_batch) 
+    # embedding, loss = Task2Vec(probe_network).embed(tokenized_batch, epochs=1)
+
+    from diversity.task_similarity import pdist, plot_distance_matrix, \
+                                      stats_of_distance_matrix
+
+    num_batches = 3
+    if num_batches < 2:
+        raise ValueError(f'num_batches must be >= 3, but got {num_batches=} otherwise you only get 1 comparison so 1 distance value')
+    buffer_size = 500_000
+    seed = 0
+    embeddings = []
+    for batch_num in range(num_batches):
+        print(f'--> {batch_num=}\n')
+        shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed)
+        batch = shuffled_dataset.take(batch_size)
+        tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+
+        # embeddings.append(Task2Vec(probe_network).embed(tokenized_batch)[0])
+        # embeddings.append(Task2Vec(probe_network).embed(tokenized_batch, epochs=1)[0])  # only for debugging
+        embeddings.append(Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)[0])  # only for debugging
+
+    print(f'{len(embeddings)=}')
+    distance_matrix = pdist(embeddings, distance='cosine')
+    print(f'{distance_matrix=}')
+    div_coeff, conf_interval = stats_of_distance_matrix(distance_matrix)
+    print(f'Diversity: {(div_coeff, conf_interval)=}')
+    plot_distance_matrix(embeddings)
+
+    import numpy as np
+    from pathlib import Path
+
+    # output_dir = Path('./').expanduser()
+    # np.save(output_dir / 'distance_matrix.npy', distance_matrix)
+    # results: dict = {'embeddings': [embed for embed in embeddings],
+    #                 'distance_matrix': distance_matrix,
+    #                 "num_batches": num_batches}
+    # np.save(output_dir / 'results.npy', results)    
 
 def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights():
     """
@@ -191,12 +263,13 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
 
 
 if __name__ == '__main__':
-    print(f'\nRunning {__file__}')
+    print(f'\n\n\n------------------- Running {__file__} -------------------')
     # -- Run tests and time it
     import time
     time_start = time.time()
     # -- Run tests
     # test_get_batch_from_dataset()
+    # alycias_original_colab_code()
     test_diversity_coefficient()
     # -- End tests, report how long it took
-    print(f'Time it took: {time.time() - time_start} seconds')
+    print(f'Time it took: {time.time() - time_start} seconds \a\n')

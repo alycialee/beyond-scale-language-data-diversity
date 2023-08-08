@@ -116,7 +116,7 @@ class Task2Vec:
             self.loss_fn = nn.CrossEntropyLoss() if not self.bernoulli else nn.BCEWithLogitsLoss()
             self.loss_fn = self.loss_fn.to(self.device)
 
-    def embed(self, dataset: Dataset):
+    def embed(self, dataset: Dataset, epochs: int = 5):
         ## LLM DIV
         # Cache the last layer features (needed to train the classifier) and (if needed) the intermediate layer features
         # so that we can skip the initial layers when computing the embedding
@@ -125,9 +125,9 @@ class Task2Vec:
             loss = None
             if self.classifier_opts:
                 if "finetune" in self.classifier_opts and self.classifier_opts["finetune"]:
-                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples)
+                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
             else:
-                loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples)
+                loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
             self.compute_fisher(dataset)
             embedding = self.extract_embedding(self.model)
             return embedding, loss
@@ -201,7 +201,7 @@ class Task2Vec:
                 metrics.update(n=batch['input_ids'].shape[0], loss=loss.item(), error=error)
                 
                 if classifier_opts.get("break_early", False):
-                    print("breaking early")
+                    print("----> breaking early")
                     break
             if classifier_opts.get("break_early", False):
                 break
