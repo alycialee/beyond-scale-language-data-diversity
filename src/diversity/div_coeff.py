@@ -12,6 +12,7 @@ from torch import nn
 import numpy as np
 
 from datasets import load_dataset
+from datasets import interleave_datasets
 
 from diversity.task2vec import Task2Vec
 import diversity.task_similarity as task_similarity
@@ -26,6 +27,7 @@ def get_diversity_coefficient(dataset,
                             buffer_size: int = 500_000, 
                             distance = 'cosine',
                             verbose: bool = True,
+                            debug: bool = False,
                           ) -> dict:
     """
     Compute the diversity coefficient of a dataset using a probe network.
@@ -48,11 +50,11 @@ def get_diversity_coefficient(dataset,
         #     print(f'{next(iter(tokenized_batch))=}')
 
         # - Get Task2Vec embedding for batch
-        # embedding, batch_loss = Task2Vec(probe_network).embed(tokenized_batch)
-        embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
-        if verbose:
-            print(f'{loss=}')
-            print(f'{embedding=}')
+        if not debug:
+            embedding, loss = Task2Vec(probe_network).embed(tokenized_batch)
+        else:
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+        print(f'{loss=}\n{embedding=}\n') if verbose else None
         
         # - Collect results
         embeddings.append(embedding)
@@ -122,6 +124,27 @@ def cross_diversity_coefficient(dataset_target,
 def get_tokenized_batch(batch):
     return next(iter(batch))
 
+def preprocess(examples):
+    return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    
+def my_map(batch):
+    return batch.map(preprocess, batched=True, remove_columns=[])
+
+def print_examples_from_dataset(dataset, preprocess=preprocess, map=my_map, batch_size=100):
+    print('\n---- Examples from dataset ----')
+    batch = dataset.take(batch_size)
+    # batch = map(batch)
+    counts = 0
+    for example in list(batch):
+        # print()
+        print(f'{example.keys()=}')
+        if 'url' in example:
+            counts += 1
+            # print(f'{example=}')
+        else:
+            print(f'{example=}')
+    print(f'{counts=}')
+
 # -- Tests, Examples
 
 def test_get_batch_from_dataset():
@@ -133,13 +156,15 @@ def test_get_batch_from_dataset():
       tokenizer.pad_token = tokenizer.eos_token
 
     # -- Get batch from dataset
-    dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    remove_columns = ["text", "timestamp", "url"]
+    # path, name = 'c4', 'en'
+    path, name = "wikitext", 'wikitext-103-v1'
+    dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+    batch = dataset.take(batch_size)
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=max_seq_length, truncation=True, return_tensors="pt")
-    raw_text_batch = dataset.take(batch_size)
     print(f'{batch=}')
     print(f'{next(iter(batch))=}')
+    remove_columns = ["text", "timestamp", "url"] if path == "c4" else []
     tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
     print(f'{tokenized_batch=}')
     print(f'{next(iter(tokenized_batch))=}')
@@ -270,8 +295,92 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     - div c4+wt, respect gpt3 weights
     then repeat all with pt (no ft)
     """
-    pass
+    # -- Setup wandb
+    import wandb
+    # - Dryrun
+    mode = 'dryrun'
+    num_batches = 3
 
+    # - Online (real experiment)
+    # mode='online'
+    # num_batches = 600
+    # path, name = 'c4', 'en'
+    # path, name = "wikitext", 'wikitext-103-v1'
+    # probabilities = None
+    path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
+    # path, name = ['wikitext', 'wikitext'], ['wikitext-103-v1', 'wikitext-103-v1']
+    probabilities = [1.0/len(path)] * len(path)
+    # probablilities = [0, 1.0]
+    # not changing
+    batch_size = 512
+    today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
+    run_name = f'{path} div_coeff_{num_batches=} ({today=} {probabilities=})'
+    print(f'{run_name=}')
+
+    # - Init wandb
+    wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size})
+    debug: bool = mode == 'dryrun'
+    print(f'{debug=}')
+    print(f'{wandb.config=}')
+
+    # -- Get probe network
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get data set
+    remove_columns = []
+    if isinstance(path, str):
+        # dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+        # remove_columns = ["text", "timestamp", "url"] if path == 'c4' else []
+        raise NotImplementedError
+    else:
+        datasets = [load_dataset(path, name, streaming=True, split="train").with_format("torch") for path, name in zip(path, name)]
+        [print(f'{dataset.description=}') for dataset in datasets]
+        dataset = interleave_datasets(datasets, probabilities)
+    print(f'{dataset=}')
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    # batch = dataset.take(batch_size)
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    print_examples_from_dataset(dataset, batch_size=100)
+
+    # -- Compute diversity coefficient
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
+    div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
+    print(f'{div_coeff=} {div_coeff_ci=}')
+    wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})
+
+    # -- Save results or not
+    save_results = True
+    if save_results:
+        output_dir = Path(f'~/data/div_coeff/{today}').expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        np.save(output_dir / f'distance_matrix{today}.npy', results['distance_matrix'])
+        np.save(output_dir / f'results{today}.npy', results)
+        # Save results as a pretty-printed JSON
+        results = {key: str(value) for key, value in results.items()}
+        with open(output_dir / f'results{today}.json', 'w') as f:
+            json.dump(results, f, indent=4)
+        # - wandb save
+        base_path = str(output_dir.parent)
+        wandb.save(str(output_dir / f'distance_matrix{today}.npy'), base_path=base_path)
+        wandb.save(str(output_dir / f'results{today}.npy'), base_path=base_path)
+        wandb.save(str(output_dir / f'results{today}.json'), base_path=base_path)
+        wandb.save(__file__)
+    
+    # -- Finish wandb
+    wandb.finish()
 
 if __name__ == '__main__':
     print(f'\n\n\n------------------- Running {__file__} -------------------')
@@ -281,6 +390,7 @@ if __name__ == '__main__':
     # -- Run tests
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
-    test_diversity_coefficient()
+    # test_diversity_coefficient()
+    experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
