@@ -347,9 +347,9 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
         [print(f'{dataset.description=}') for dataset in datasets]
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
+    # batch = dataset.take(batch_size)
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    # batch = dataset.take(batch_size)
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
     # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
