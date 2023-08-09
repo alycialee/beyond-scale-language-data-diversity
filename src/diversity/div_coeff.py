@@ -4,6 +4,8 @@ data set before doing anything with it. e.g., the data sets might be huge, espec
 GPT4 suggested this: https://chat.openai.com/share/495de296-71c2-4f5e-83e2-3b22d038e8bc which seems reasonable.
 It also would have made all the data set interfaces consistent in training vs computing data set metrics.
 """
+import time
+
 from pathlib import Path
 import datetime
 import json
@@ -43,11 +45,15 @@ def get_diversity_coefficient(dataset,
         print(f'--> {batch_num=}\n') if verbose else None
         # - Get batch
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed)
-        raw_text_batch = dataset.take(batch_size)
+        raw_text_batch = shuffled_dataset.take(batch_size)
         tokenized_batch = map(raw_text_batch)
-        # if verbose:
-        #     print(f'{type(tokenized_batch)=}')
-        #     print(f'{next(iter(tokenized_batch))=}')
+        if verbose:
+            print(f'{raw_text_batch=}')
+            print(f'{tokenized_batch=}')
+            # time_start = time.time()
+            # print(f'{next(iter(raw_text_batch))=}')
+            # print(f'{next(iter(tokenized_batch))=}')
+            # print(f'Time it took: {time.time() - time_start} seconds \a\n')
 
         # - Get Task2Vec embedding for batch
         if not debug:
@@ -239,6 +245,9 @@ def alycias_original_colab_code():
     np.save(output_dir / 'results.npy', results)    
 
 def test_diversity_coefficient():
+    print(f'Running function: {test_diversity_coefficient=}')
+    batch_size = 512
+
     # -- Get probe network
     from datasets import load_dataset
     import torch
@@ -253,13 +262,21 @@ def test_diversity_coefficient():
 
     # -- Get data set
     dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    # batch = dataset.take(batch_size)
     remove_columns = ["text", "timestamp", "url"]
+    print(f'{dataset=}')
+    batch = dataset.take(batch_size)
+    print(f'{next(iter(batch))=}')
+
+    # - Prepare functions to tokenize batch
+    time_start = time.time()
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(batch)
+    print(f'{next(iter(tokenized_batch))=}')
+    print(f'Time it took: {time.time() - time_start} seconds \a\n')
 
     # -- Compute diversity coefficient
     # results: dict = get_diversity_coefficient(dataset, map, probe_network)
