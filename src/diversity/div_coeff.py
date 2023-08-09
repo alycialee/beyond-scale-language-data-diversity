@@ -298,12 +298,12 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     # -- Setup wandb
     import wandb
     # - Dryrun
-    mode = 'dryrun'
-    num_batches = 3
+    # mode = 'dryrun'
+    # num_batches = 3
 
     # - Online (real experiment)
-    # mode='online'
-    # num_batches = 600
+    mode='online'
+    num_batches = 600
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
     # probabilities = None
@@ -348,6 +348,7 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
     # batch = dataset.take(batch_size)
+    # - Prepare functions to tokenize batch
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     def map(batch):

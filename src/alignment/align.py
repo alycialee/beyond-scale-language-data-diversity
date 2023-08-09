@@ -53,11 +53,9 @@ def alignment_task2vec(dataset_target,
     # - Compute embedding of target
     shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
     raw_text_batch = shuffled_dataset.take(batch_size)
-    print(f'{next(iter(raw_text_batch))=}')
-    tokenized_batch = map_target(batch)
-    # tokenized_batch = raw_text_batch.map(preprocess, batched=True, remove_columns=[])
-    print(f'{list(tokenized_batch)[0]=}')
-    print(f'{next(iter(tokenized_batch))=}')
+    # print(f'{next(iter(raw_text_batch))=}')
+    tokenized_batch = map_target(raw_text_batch)
+    # print(f'{next(iter(tokenized_batch))=}')
     embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
 
     # - Compute embedding of source
@@ -136,17 +134,22 @@ def sanity2_af_is_aligned_to_af():
     # path, name = "wikitext", 'wikitext-103-v1'
     # path, name = Path('~/data-quality/debug_data/debug_data_15_examples_round_trip/RoundTripNthPowersData_Sheet1.csv').expanduser(), None
     dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
-    # batch = dataset.take(batch_size)
+    remove_columns = []
+    print(f'{dataset=}')
+    batch = dataset.take(batch_size)
 
     # - Prepare functions to tokenize batch for this AF dataset
-    def preprocess(examples):
+    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
         return tokenizer(examples["informal"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    def map(batch):
-        return batch.map(preprocess, batched=True, remove_columns=[])
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    print(f'{next(iter(tokenized_batch))=}')
+    tokenized_batch = map(batch)
+    print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute alignment
-    results = alignment_task2vec(dataset, dataset, probe_network, map, map)
+    results = alignment_task2vec(dataset, dataset, map, map, probe_network)
     print(f'{results=}')
 
 
