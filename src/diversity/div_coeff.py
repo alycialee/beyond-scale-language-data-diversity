@@ -253,10 +253,10 @@ def test_diversity_coefficient():
 
     # -- Get data set
     dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    # batch = dataset.take(batch_size)
     remove_columns = ["text", "timestamp", "url"]
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    # batch = dataset.take(batch_size)
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
     # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
