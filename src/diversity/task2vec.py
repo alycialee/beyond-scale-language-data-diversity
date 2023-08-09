@@ -124,10 +124,15 @@ class Task2Vec:
         if self.mode == "autoregressive":
             loss = None
             if self.classifier_opts:
-                if "finetune" in self.classifier_opts and self.classifier_opts["finetune"]:
+                if self.classifier_opts.get('break_early', False):  # assuming if you want to break early then you do want to finetune
                     loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+                elif self.classifier_opts.get('finetune', False):  # finetune only if specified True, else no finetuning if not specified or False. 
+                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+                else:
+                    print('Warning: classifier_opts doesnt specify finetune or break early, thus no finetuning is being done.')
             else:
                 loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+            print(f'{loss=} (after fine tune, if not done it will be None)')
             self.compute_fisher(dataset)
             embedding = self.extract_embedding(self.model)
             return embedding, loss
@@ -219,6 +224,9 @@ class Task2Vec:
             
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+        print(f'{dataset=}')
+        print(f'{next(iter(dataset))=}')
+        print(f'{next(iter(data_loader))=}')
         device = get_device(self.model)
         n_batches = int(self.classifier_opts.get("task_batch_size", 512) / loader_opts.get('batch_size', 8))
         logging.info("Computing Fisher...")

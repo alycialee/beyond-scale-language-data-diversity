@@ -26,7 +26,7 @@ def get_diversity_coefficient(dataset,
                             seed = 0, 
                             buffer_size: int = 500_000, 
                             distance = 'cosine',
-                            verbose: bool = True,
+                            verbose: bool = False,
                             debug: bool = False,
                           ) -> dict:
     """
@@ -263,7 +263,8 @@ def test_diversity_coefficient():
 
     # -- Compute diversity coefficient
     # results: dict = get_diversity_coefficient(dataset, map, probe_network)
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)  # only for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)  # only for debugging
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
 
@@ -391,7 +392,7 @@ if __name__ == '__main__':
     # -- Run tests
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
-    # test_diversity_coefficient()
-    experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
+    test_diversity_coefficient()
+    # experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')

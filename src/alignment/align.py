@@ -42,6 +42,8 @@ def alignment_task2vec(dataset_target,
                         seed = 0, 
                         buffer_size: int = 500_000, 
                         distance = 'cosine',
+                        verbose: bool = False,
+                        debug: bool = False,
                         ) -> dict:
     """
     Alignment v2 - with Task2Vec
@@ -49,14 +51,23 @@ def alignment_task2vec(dataset_target,
     Given two data sets, compute how aligned they are using probe network f_w 
         alg_2 = Align_2(T, S, f_w) = 1 - d(e_{D_S}, e_{D_T})
     by comparing embedding the entire dataset or a large batch. 
+
+    Note: there is no sense of number of batches here, so num_batches = 1 effectively + if CIs needed need to be with wrt batch examples. 
     """
     # - Compute embedding of target
     shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
     raw_text_batch = shuffled_dataset.take(batch_size)
-    # print(f'{next(iter(raw_text_batch))=}')
     tokenized_batch = map_target(raw_text_batch)
-    # print(f'{next(iter(tokenized_batch))=}')
-    embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
+    if verbose:
+        print(f'{next(iter(raw_text_batch))=}')
+        print(f'{next(iter(tokenized_batch))=}')
+    if not debug:
+        embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
+    else:
+        embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+    if verbose:
+        print(f'{embedding_target=}')
+        print(f'{loss_target=}')
 
     # - Compute embedding of source
     shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed)
@@ -149,7 +160,8 @@ def sanity2_af_is_aligned_to_af():
     print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute alignment
-    results = alignment_task2vec(dataset, dataset, map, map, probe_network)
+    # results = alignment_task2vec(dataset, dataset, map, map, probe_network, batch_size=8)
+    results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=8)
     print(f'{results=}')
 
 
