@@ -188,7 +188,7 @@ class Task2Vec:
         print("MODEL DEVICE: ", device)
         
         # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
-        num_examples = len(list(data_loader)) 
+        num_examples = len(list(data_loader))  # not idea but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
         n_batches = num_examples
         
         optimizer_grouped_parameters = [
