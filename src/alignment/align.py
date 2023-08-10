@@ -143,15 +143,12 @@ def test_get_batch_from_dataset():
     print(f'{next(iter(batch))=}')
     print()
 
-def issues_with_my_dataset():
+def get_tokenized_dataset_to_work_with_pytorch_dataloader_by_removing_columns_without_tenosr():
     """
-    claude attempts: https://claude.ai/chat/5e3d2467-35af-47a7-9a6b-bbbec2283f96
-    colab: https://colab.research.google.com/drive/1sbs95as_66mtK9VK_vbaE9gLE-Tjof1-#scrollTo=cBHwA-asBd-F
-    so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
-    hf discuss: https://discuss.huggingface.co/t/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-without-having-errors/50204
+    Remove the columns that are not tensors, and then it works with pytorch dataloader.
+
+    ref so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
     """
-    print(f'Running function: {issues_with_my_dataset=}')
-    # batch_size = 512
     batch_size = 10
     token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
 
@@ -170,24 +167,21 @@ def issues_with_my_dataset():
     # -- Get batch from dataset
     from datasets import load_dataset
     path, name = 'brando/debug1_af', 'debug1_af'
-    # path, name = 'brando/debug0_af', 'debug0_af'
-    # dataset = load_dataset(path, name, streaming=True, split="train", token=token, keep_in_memory=True).with_format(type="torch")
-    column_names = ['link', 'formal statement', 'generated informal statement', 'solvable by sledgehammer', 'keep or not', 'informalization correct']
     dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
     print(f'{dataset.column_names=}')
-    batch = dataset.take(batch_size)
+    batch = dataset.take(1)
     def preprocess_formalize(examples): 
         """ link,formal statement,generated informal statement,solvable by sledgehammer,keep or not,informalization correct """
         informal_statement = examples["generated informal statement"]
         formal_statement = examples["formal statement"]
-        # text = f'formal statement {formal_statement} informal statement {informal_statement}'
         text = f'informal statement {informal_statement} formal statement {formal_statement}'
         return tokenizer(text, padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-        # return tokenizer(text, padding="max_length", truncation=True, return_tensors="pt")
+    column_names = next(iter(batch)).keys()
+    print(f'{column_names=}')
 
     # - Prepare functions to tokenize batch
     preprocess = preprocess_formalize
-    remove_columns = dataset.column_names if dataset.column_names is not None else column_names  # remove everything except the tokenized fields in the dict
+    remove_columns = column_names  # remove everything except the tokenized fields in the dict
     print(f'{remove_columns=}')
     def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
@@ -195,16 +189,120 @@ def issues_with_my_dataset():
 
     # -- Get data loader
     from torch.utils.data import DataLoader, Dataset
-    # def collate_tokenize(data):
-    #     print(f'{data[0]=}')
-    #     text_batch = [element["text"] for element in data]
-    #     tokenized = tokenizer(text_batch, padding='longest', truncation=True, return_tensors='pt')
-    #     return tokenized
-    # data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
     data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False)
-    # num_batches = len(list(data_loader))
+    print(f'{next(iter(data_loader))=}')
+    print('Done!\a')
+
+def demo_how_to_use_collate_fn_with_pytorch_dataloader():
+    """
+    I don't think we will need this for task2vec but hopefully this insight helps for passing the collate to the hf trainer. 
+
+    so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
+    """
+    batch_size = 512
+    token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
+
+    # -- AF now
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+    
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+      tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get batch from dataset
+    from datasets import load_dataset
+    path, name = 'brando/debug1_af', 'debug1_af'
+    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
+    batch = dataset.take(512)
+    # column_names = next(iterbatch).keys()
+    # print(f'{column_names=}')
+    
+    # -- Get data loader
+    from torch.utils.data import DataLoader, Dataset
+
+    def collate_tokenize(data):
+        text_batch = [f'informal statement {example["generated informal statement"]} formal statement {example["formal statement"]}' for example in data]
+        tokenized = tokenizer(text_batch, padding='longest', max_length=128, truncation=True, return_tensors='pt')
+        return tokenized
+    data_loader = DataLoader(batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
     batch = next(iter(data_loader))
     print(f'{batch=}')
+
+    data_loader = DataLoader(dataset, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
+    batch = next(iter(data_loader))
+    print(f'{batch=}')
+    print('Done!\a')
+
+def demo_finetuning_gpt2_with_collate_passed_to_trainer_on_af_dataset():
+    """
+    """
+    # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
+    token = None
+    batch_size = 8
+
+    # -- AF now
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+    
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+      tokenizer.pad_token = tokenizer.eos_token
+    model = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    # -- Get batch from dataset
+    from datasets import load_dataset
+    # path, name = 'brando/debug1_af', 'debug1_af'
+    path, name = 'brando/debug0_af', 'debug0_af'
+    # train_dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
+    # eval_dataset = load_dataset(path, name, streaming=True, split="test", token=token).with_format(type="torch")
+    # batch = dataset.take(1)
+    # column_names = next(iterbatch).keys()
+    # print(f'{column_names=}')
+
+    # -- Compute max steps (I think we should try to do this for real experiments such that the number of tokens is the same in all training runs for fair experiments, todo: ask Sudharsan or online, for now just make streaming=False)
+    train_dataset = load_dataset(path, name, streaming=False, split="train", token=token).with_format(type="torch")  # hack to get dataset size
+    eval_dataset = load_dataset(path, name, streaming=False, split="test", token=token).with_format(type="torch") # hack to get dataset size
+    print(f'{len(train_dataset)=}')
+    print(f'{len(eval_dataset)=}')
+    per_device_train_batch_size = batch_size
+    num_epochs = 1
+    max_steps = (len(train_dataset) // per_device_train_batch_size) * num_epochs
+    print(f'{max_steps=}')    
+
+    # -- Get trainer
+    def collate_tokenize(data):
+        text_batch = [f'informal statement {example["generated informal statement"]} formal statement {example["formal statement"]}' for example in data]
+        tokenized = tokenizer(text_batch, padding='longest', max_length=128, truncation=True, return_tensors='pt')
+        return tokenized
+
+    from transformers import Trainer, TrainingArguments
+    training_args = TrainingArguments(
+        output_dir=Path('~/data/results/af_debug').expanduser(),          # output directory
+        max_steps=max_steps,             # max_steps
+        per_device_train_batch_size=batch_size,   # batch size per device during training
+        per_device_eval_batch_size=batch_size,    # batch size for evaluation
+        warmup_steps=500,                # number of warmup steps for learning rate scheduler
+        weight_decay=0.01,               # strength of weight decay
+        logging_dir=Path('~/data/logs/af_debug').expanduser(),            # directory for storing logs
+        logging_steps=10,
+        report_to='none',
+    )
+    trainer = Trainer(
+        model=model,                         # the instantiated 🤗 Transformers model to be trained
+        args=training_args,                  # training arguments, defined above
+        train_dataset=train_dataset,         # training dataset
+        eval_dataset=eval_dataset,             # evaluation dataset
+        data_collator = collate_tokenize,
+    )
+    trainer.train()
     print('Done!\a')
 
 # - Experiments
@@ -268,7 +366,9 @@ if __name__ == '__main__':
     time_start = time.time()
     # -- Run tests
     # test_get_batch_from_dataset()
-    issues_with_my_dataset()
-    # sanity2_af_is_aligned_to_af()
+    # get_tokenized_dataset_to_work_with_pytorch_dataloader_by_removing_columns_without_tenosr()
+    # demo_how_to_use_collate_fn_with_pytorch_dataloader()
+    # demo_finetuning_gpt2_with_collate_passed_to_trainer_on_af_dataset()
+    sanity2_af_is_aligned_to_af()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
