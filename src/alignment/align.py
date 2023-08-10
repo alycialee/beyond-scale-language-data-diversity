@@ -198,7 +198,8 @@ def sanity2_af_is_aligned_to_af():
 
 def issues_with_my_dataset():
     print(f'Running function: {issues_with_my_dataset=}')
-    batch_size = 512
+    # batch_size = 512
+    batch_size = 10
     token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
 
     # -- Get probe network
@@ -260,7 +261,8 @@ def issues_with_my_dataset():
 
     # -- Get batch from dataset
     from datasets import load_dataset
-    path, name = 'brando/debug1_af', 'debug1_af'
+    # path, name = 'brando/debug1_af', 'debug1_af'
+    path, name = 'brando/debug0_af', 'debug0_af'
     remove_columns = []
     dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format("torch")
     print(f'{dataset=}')
@@ -287,9 +289,10 @@ def issues_with_my_dataset():
     #     # assert isinstance(dd, dict)
     loader_opts = {}
     classifier_opts = {} 
+    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=SequentialSampler(range(512))  )
     data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
-                            num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=SequentialSampler(range(512))     
-                            )
+                        num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=None)
     print(f'{iter(data_loader)=}')
     print(f'{next(iter(data_loader))=}')
     print('Done\a')
