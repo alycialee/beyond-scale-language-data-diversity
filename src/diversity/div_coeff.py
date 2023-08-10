@@ -278,6 +278,21 @@ def test_diversity_coefficient():
     print(f'{next(iter(tokenized_batch))=}')
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
 
+    from torch.utils.data import Dataset, DataLoader
+    dataset = tokenized_batch
+    print(f'{type(dataset)=}')
+    print(f'{dataset.__class__=}')
+    print(f'{isinstance(dataset, Dataset)=}')
+    for i, d in enumerate(dataset):
+        assert isinstance(d, dict)
+        # dd = dataset[i]
+        # assert isinstance(dd, dict)
+    loader_opts = {}
+    classifier_opts = {} 
+    data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+                            num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+    print(f'{next(iter(data_loader))=}')
+
     # -- Compute diversity coefficient
     # results: dict = get_diversity_coefficient(dataset, map, probe_network)
     # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3)  # only for debugging

@@ -163,10 +163,23 @@ class Task2Vec:
             loader_opts = {}
         if classifier_opts is None:
             classifier_opts = {}
-        data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
+        print(f'{type(dataset)=}')
+        print(f'{dataset.__class__=}')
+        print(f'{isinstance(dataset, Dataset)=}')
+        for i, d in enumerate(dataset):
+            assert isinstance(d, dict)
+            dd = dataset[i]
+            assert isinstance(dd, dict)
+        assert i == 255
+        print(f'{len(list(dataset))=}')
+        data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+        print(f'{len(list(dataset))=}')
         print(f'{dataset=}')
         print(f'{next(iter(dataset))=}')
+        for b, data in enumerate(data_loader):
+            print(f'{b=}')
+            print(f'{data=}')
         print(f'{next(iter(data_loader))=}')
 
         device = next(self.model.parameters()).device

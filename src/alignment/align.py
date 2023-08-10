@@ -148,9 +148,8 @@ def test_get_batch_from_dataset():
 def sanity2_af_is_aligned_to_af():
     """ Sanity check that data from the same place has low. Prev work showed 0.05 is lower bound.
     so hopefully around that number. """
-    batch_size = 512
+    batch_size = 256
     remove_columns = []
-    # token = keys=$(cat ~/data/openai_api_key.txt)
     token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
     # print(f'{token=}')  # CAREFUL PRINTING THIS AND PUSHING TO GITHUB, WANDB etc.
 
@@ -169,10 +168,10 @@ def sanity2_af_is_aligned_to_af():
     # -- Get batch from dataset
     from datasets import load_dataset
     # path, name = 'brando/debug0_af', 'debug0_af'
-    # path, name = 'brando/debug1_af', 'debug1_af'
-    # remove_columns = []
-    path, name = 'c4', 'en'  # sanity check, this should 1. run code 2. have high alignment
-    remove_columns = ["text", "timestamp", "url"]
+    path, name = 'brando/debug1_af', 'debug1_af'
+    remove_columns = []
+    # path, name = 'c4', 'en'  # sanity check, this should 1. run code 2. have high alignment
+    # remove_columns = ["text", "timestamp", "url"]
     # path, name = "wikitext", 'wikitext-103-v1'
     # path, name = Path('~/data-quality/debug_data/debug_data_15_examples_round_trip/RoundTripNthPowersData_Sheet1.csv').expanduser(), None
     dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format("torch")
@@ -181,10 +180,11 @@ def sanity2_af_is_aligned_to_af():
     print(f'{next(iter(batch))=}')
 
     # - Prepare functions to tokenize batch
-    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
-        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     # def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
-    #     return tokenizer(examples["informal"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    #     return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
+        # return tokenizer(examples["generated informal statement"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+        return tokenizer(examples["link"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
     tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
@@ -193,9 +193,106 @@ def sanity2_af_is_aligned_to_af():
 
     # -- Compute alignment
     print('-- Compute alignment...')
-    # results = alignment_task2vec(dataset, dataset, map, map, probe_network, batch_size=8)
-    results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=8)
+    results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=batch_size)
     print(f'{results=}')
+
+def issues_with_my_dataset():
+    print(f'Running function: {issues_with_my_dataset=}')
+    batch_size = 512
+    token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
+
+    # -- Get probe network
+    # from datasets import load_dataset
+    # import torch
+    # from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    # tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    # if tokenizer.pad_token_id is None:
+    #     tokenizer.pad_token = tokenizer.eos_token
+    # probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    # device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    # probe_network = probe_network.to(device)
+
+    # # -- Get data set
+    # dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    # remove_columns = ["text", "timestamp", "url"]
+    # print(f'{dataset=}')
+    # batch = dataset.take(batch_size)
+    # print(f'{next(iter(batch))=}')
+
+    # # - Prepare functions to tokenize batch
+    # time_start = time.time()
+    # def preprocess(examples):
+    #     return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    # def map(batch):
+    #     return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = map(batch)
+    # print(f'{next(iter(tokenized_batch))=}')
+    # print(f'Time it took: {time.time() - time_start} seconds \a\n')
+    #
+    # from torch.utils.data import Dataset, DataLoader
+    # dataset = tokenized_batch
+    # print(f'{type(dataset)=}')
+    # print(f'{dataset.__class__=}')
+    # print(f'{isinstance(dataset, Dataset)=}')
+    # for i, d in enumerate(dataset):
+    #     assert isinstance(d, dict)
+    #     # dd = dataset[i]
+    #     # assert isinstance(dd, dict)
+    # loader_opts = {}
+    # classifier_opts = {} 
+    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+    # print(f'{next(iter(data_loader))=}')
+
+    # -- AF now
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+    
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+      tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get batch from dataset
+    from datasets import load_dataset
+    path, name = 'brando/debug1_af', 'debug1_af'
+    remove_columns = []
+    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format("torch")
+    print(f'{dataset=}')
+    batch = dataset.take(batch_size)
+    # print(f'{next(iter(batch))=}')
+
+    # - Prepare functions to tokenize batch
+    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
+        return tokenizer(examples["generated informal statement"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(batch)
+    # print(f'{next(iter(tokenized_batch))=}')
+
+    from torch.utils.data import Dataset, DataLoader, SequentialSampler
+    dataset = tokenized_batch
+    print(f'{type(dataset)=}')
+    print(f'{dataset.__class__=}')
+    print(f'{isinstance(dataset, Dataset)=}')
+    # for i, d in enumerate(dataset):
+    #     assert isinstance(d, dict)
+    #     # dd = dataset[i]
+    #     # assert isinstance(dd, dict)
+    loader_opts = {}
+    classifier_opts = {} 
+    data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+                            num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=SequentialSampler(range(512))     
+                            )
+    print(f'{iter(data_loader)=}')
+    print(f'{next(iter(data_loader))=}')
+    print('Done\a')
 
 
 if __name__ == '__main__':
@@ -205,6 +302,7 @@ if __name__ == '__main__':
     time_start = time.time()
     # -- Run tests
     # test_get_batch_from_dataset()
-    sanity2_af_is_aligned_to_af()
+    issues_with_my_dataset()
+    # sanity2_af_is_aligned_to_af()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
