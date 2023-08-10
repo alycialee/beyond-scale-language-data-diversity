@@ -310,10 +310,10 @@ def demo_finetuning_gpt2_with_collate_passed_to_trainer_on_af_dataset():
 def sanity2_af_is_aligned_to_af():
     """ Sanity check that data from the same place has low. Prev work showed 0.05 is lower bound.
     so hopefully around that number. """
-    batch_size = 256
+    batch_size = 8
     remove_columns = []
-    token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
-    # print(f'{token=}')  # CAREFUL PRINTING THIS AND PUSHING TO GITHUB, WANDB etc.
+    # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
+    token = None
 
     # -- Get probe network
     from datasets import load_dataset
@@ -329,29 +329,27 @@ def sanity2_af_is_aligned_to_af():
 
     # -- Get batch from dataset
     from datasets import load_dataset
-    # path, name = 'brando/debug0_af', 'debug0_af'
-    path, name = 'brando/debug1_af', 'debug1_af'
-    remove_columns = []
-    # path, name = 'c4', 'en'  # sanity check, this should 1. run code 2. have high alignment
-    # remove_columns = ["text", "timestamp", "url"]
-    # path, name = "wikitext", 'wikitext-103-v1'
-    # path, name = Path('~/data-quality/debug_data/debug_data_15_examples_round_trip/RoundTripNthPowersData_Sheet1.csv').expanduser(), None
-    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format("torch")
-    print(f'{dataset=}')
-    batch = dataset.take(batch_size)
-    print(f'{next(iter(batch))=}')
+    # path, name = 'brando/debug1_af', 'debug1_af'
+    path, name = 'brando/debug0_af', 'debug0_af'
+    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
+    print(f'{dataset.column_names=}')
+    batch = dataset.take(1)
+    def preprocess_formalize(examples): 
+        """ link,formal statement,generated informal statement,solvable by sledgehammer,keep or not,informalization correct """
+        informal_statement = examples["generated informal statement"]
+        formal_statement = examples["formal statement"]
+        text = f'informal statement {informal_statement} formal statement {formal_statement}'
+        return tokenizer(text, padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    column_names = next(iter(batch)).keys()
+    print(f'{column_names=}')
 
     # - Prepare functions to tokenize batch
-    # def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
-    #     return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
-        # return tokenizer(examples["generated informal statement"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-        return tokenizer(examples["link"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    preprocess = preprocess_formalize
+    remove_columns = column_names  # remove everything except the tokenized fields in the dict
+    print(f'{remove_columns=}')
     def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
     tokenized_batch = map(batch)
-    print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute alignment
     print('-- Compute alignment...')
