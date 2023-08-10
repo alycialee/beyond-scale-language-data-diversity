@@ -163,24 +163,6 @@ class Task2Vec:
             loader_opts = {}
         if classifier_opts is None:
             classifier_opts = {}
-        # print(f'{type(dataset)=}')
-        # print(f'{dataset.__class__=}')
-        # print(f'{isinstance(dataset, Dataset)=}')
-        # for i, d in enumerate(dataset):
-        #     assert isinstance(d, dict)
-        #     dd = dataset[i]
-        #     assert isinstance(dd, dict)
-        # assert i == 255
-        # print(f'{len(list(dataset))=}')
-        # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
-        #                          num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-        # print(f'{len(list(dataset))=}')
-        # print(f'{dataset=}')
-        # print(f'{next(iter(dataset))=}')
-        # for b, data in enumerate(data_loader):
-        #     print(f'{b=}')
-        #     print(f'{data=}')
-        # print(f'{next(iter(data_loader))=}')
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
 
@@ -188,8 +170,8 @@ class Task2Vec:
         print("MODEL DEVICE: ", device)
         
         # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
-        # num_examples = len(list(data_loader))  # not ideal but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
-        # n_batches = num_examples
+        num_examples = len(list(data_loader))  # not ideal but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
+        n_batches = num_examples
         
         optimizer_grouped_parameters = [
             {'params': [p for p in self.model.lm_head.parameters()],
@@ -211,7 +193,7 @@ class Task2Vec:
         self.model.train()
         for _ in train_iterator:
             metrics = AverageMeter()
-            epoch_iterator = tqdm(data_loader, desc="Iteration", leave=False)
+            epoch_iterator = tqdm(data_loader, desc="Iteration", total=n_batches, leave=False)
             for step, batch in enumerate(epoch_iterator):
                 optimizer.zero_grad()
                 inputs = {'input_ids': batch['input_ids'].to(device),
@@ -244,9 +226,6 @@ class Task2Vec:
             
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-        # print(f'{dataset=}')
-        # print(f'{next(iter(dataset))=}')
-        # print(f'{next(iter(data_loader))=}')
         device = get_device(self.model)
 
         # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
