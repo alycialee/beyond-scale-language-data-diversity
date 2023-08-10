@@ -143,6 +143,70 @@ def test_get_batch_from_dataset():
     print(f'{next(iter(batch))=}')
     print()
 
+def issues_with_my_dataset():
+    """
+    claude attempts: https://claude.ai/chat/5e3d2467-35af-47a7-9a6b-bbbec2283f96
+    colab: https://colab.research.google.com/drive/1sbs95as_66mtK9VK_vbaE9gLE-Tjof1-#scrollTo=cBHwA-asBd-F
+    so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
+    hf discuss: https://discuss.huggingface.co/t/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-without-having-errors/50204
+    """
+    print(f'Running function: {issues_with_my_dataset=}')
+    # batch_size = 512
+    batch_size = 10
+    token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
+
+    # -- AF now
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+    
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+      tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get batch from dataset
+    from datasets import load_dataset
+    path, name = 'brando/debug1_af', 'debug1_af'
+    # path, name = 'brando/debug0_af', 'debug0_af'
+    # dataset = load_dataset(path, name, streaming=True, split="train", token=token, keep_in_memory=True).with_format(type="torch")
+    column_names = ['link', 'formal statement', 'generated informal statement', 'solvable by sledgehammer', 'keep or not', 'informalization correct']
+    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
+    print(f'{dataset.column_names=}')
+    batch = dataset.take(batch_size)
+    def preprocess_formalize(examples): 
+        """ link,formal statement,generated informal statement,solvable by sledgehammer,keep or not,informalization correct """
+        informal_statement = examples["generated informal statement"]
+        formal_statement = examples["formal statement"]
+        # text = f'formal statement {formal_statement} informal statement {informal_statement}'
+        text = f'informal statement {informal_statement} formal statement {formal_statement}'
+        return tokenizer(text, padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+        # return tokenizer(text, padding="max_length", truncation=True, return_tensors="pt")
+
+    # - Prepare functions to tokenize batch
+    preprocess = preprocess_formalize
+    remove_columns = dataset.column_names if dataset.column_names is not None else column_names  # remove everything except the tokenized fields in the dict
+    print(f'{remove_columns=}')
+    def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(batch)
+
+    # -- Get data loader
+    from torch.utils.data import DataLoader, Dataset
+    # def collate_tokenize(data):
+    #     print(f'{data[0]=}')
+    #     text_batch = [element["text"] for element in data]
+    #     tokenized = tokenizer(text_batch, padding='longest', truncation=True, return_tensors='pt')
+    #     return tokenized
+    # data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
+    data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False)
+    # num_batches = len(list(data_loader))
+    batch = next(iter(data_loader))
+    print(f'{batch=}')
+    print('Done!\a')
+
 # - Experiments
 
 def sanity2_af_is_aligned_to_af():
@@ -195,113 +259,6 @@ def sanity2_af_is_aligned_to_af():
     print('-- Compute alignment...')
     results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=batch_size)
     print(f'{results=}')
-
-def issues_with_my_dataset():
-    """
-    claude attempts: https://claude.ai/chat/5e3d2467-35af-47a7-9a6b-bbbec2283f96
-    colab: https://colab.research.google.com/drive/1sbs95as_66mtK9VK_vbaE9gLE-Tjof1-#scrollTo=cBHwA-asBd-F
-    so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
-    hf discuss: https://discuss.huggingface.co/t/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-without-having-errors/50204
-    """
-    print(f'Running function: {issues_with_my_dataset=}')
-    # batch_size = 512
-    batch_size = 10
-    token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
-
-    # -- Get probe network
-    # from datasets import load_dataset
-    # import torch
-    # from transformers import GPT2Tokenizer, GPT2LMHeadModel
-
-    # tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    # if tokenizer.pad_token_id is None:
-    #     tokenizer.pad_token = tokenizer.eos_token
-    # probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    # device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
-    # probe_network = probe_network.to(device)
-
-    # # -- Get data set
-    # dataset = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    # remove_columns = ["text", "timestamp", "url"]
-    # print(f'{dataset=}')
-    # batch = dataset.take(batch_size)
-    # print(f'{next(iter(batch))=}')
-
-    # # - Prepare functions to tokenize batch
-    # time_start = time.time()
-    # def preprocess(examples):
-    #     return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    # def map(batch):
-    #     return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = map(batch)
-    # print(f'{next(iter(tokenized_batch))=}')
-    # print(f'Time it took: {time.time() - time_start} seconds \a\n')
-    #
-    # from torch.utils.data import Dataset, DataLoader
-    # dataset = tokenized_batch
-    # print(f'{type(dataset)=}')
-    # print(f'{dataset.__class__=}')
-    # print(f'{isinstance(dataset, Dataset)=}')
-    # for i, d in enumerate(dataset):
-    #     assert isinstance(d, dict)
-    #     # dd = dataset[i]
-    #     # assert isinstance(dd, dict)
-    # loader_opts = {}
-    # classifier_opts = {} 
-    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
-    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-    # print(f'{next(iter(data_loader))=}')
-
-    # -- AF now
-    from datasets import load_dataset
-    import torch
-    from transformers import GPT2Tokenizer, GPT2LMHeadModel
-    
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    if tokenizer.pad_token_id is None:
-      tokenizer.pad_token = tokenizer.eos_token
-    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
-    probe_network = probe_network.to(device)
-
-    # -- Get batch from dataset
-    from datasets import load_dataset
-    # path, name = 'brando/debug1_af', 'debug1_af'
-    path, name = 'brando/debug0_af', 'debug0_af'
-    remove_columns = []
-    dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format("torch")
-    print(f'{dataset=}')
-    batch = dataset.take(batch_size)
-    # print(f'{next(iter(batch))=}')
-
-    # - Prepare functions to tokenize batch
-    def preprocess(examples):  # gets the raw text batch according to the specific names in table in data set & tokenize
-        return tokenizer(examples["generated informal statement"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
-    def map(batch):  # apply preprocess to batch to all examples in batch represented as a dataset
-        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    tokenized_batch = map(batch)
-    # print(f'{next(iter(tokenized_batch))=}')
-
-    from torch.utils.data import Dataset, DataLoader, SequentialSampler
-    eataset = tokenized_batch
-    print(f'{type(dataset)=}')
-    print(f'{dataset.__class__=}')
-    print(f'{isinstance(dataset, Dataset)=}')
-    # for i, d in enumerate(dataset):
-    #     assert isinstance(d, dict)
-    #     # dd = dataset[i]
-    #     # assert isinstance(dd, dict)
-    loader_opts = {}
-    classifier_opts = {} 
-    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
-    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=SequentialSampler(range(512))  )
-    data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
-                        num_workers=loader_opts.get('num_workers', 0), drop_last=False, sampler=None)
-    print(f'{iter(data_loader)=}')
-    print(f'{next(iter(data_loader))=}')
-    print('Done\a')
 
 
 if __name__ == '__main__':

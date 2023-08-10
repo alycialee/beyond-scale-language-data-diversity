@@ -188,8 +188,8 @@ class Task2Vec:
         print("MODEL DEVICE: ", device)
         
         # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
-        num_examples = len(list(data_loader))  # not idea but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
-        n_batches = num_examples
+        # num_examples = len(list(data_loader))  # not ideal but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
+        # n_batches = num_examples
         
         optimizer_grouped_parameters = [
             {'params': [p for p in self.model.lm_head.parameters()],
@@ -200,7 +200,7 @@ class Task2Vec:
         
         # Train!
         logging.info("***** Running training *****")
-        logging.info("  Num examples = %d", num_examples)
+        # logging.info("  Num examples = %d", num_examples)
         logging.info("  Num Epochs = %d", epochs)
         logging.info("  Batch size = %d", loader_opts.get('batch_size', 8))
         
@@ -211,7 +211,7 @@ class Task2Vec:
         self.model.train()
         for _ in train_iterator:
             metrics = AverageMeter()
-            epoch_iterator = tqdm(data_loader, desc="Iteration", total=n_batches, leave=False)
+            epoch_iterator = tqdm(data_loader, desc="Iteration", leave=False)
             for step, batch in enumerate(epoch_iterator):
                 optimizer.zero_grad()
                 inputs = {'input_ids': batch['input_ids'].to(device),
@@ -223,6 +223,7 @@ class Task2Vec:
                 optimizer.step()
                 
                 metrics.update(n=batch['input_ids'].shape[0], loss=loss.item(), error=error)
+                epoch_iterator.update(1)
                 
                 if classifier_opts.get("break_early", False):
                     print("----> breaking early")
@@ -243,13 +244,16 @@ class Task2Vec:
             
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-        print(f'{dataset=}')
-        print(f'{next(iter(dataset))=}')
-        print(f'{next(iter(data_loader))=}')
+        # print(f'{dataset=}')
+        # print(f'{next(iter(dataset))=}')
+        # print(f'{next(iter(data_loader))=}')
         device = get_device(self.model)
-        n_batches = int(self.classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
-        logging.info("Computing Fisher...")
 
+        # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
+        num_examples = len(list(data_loader))  # not idea but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
+        n_batches = num_examples
+
+        logging.info("Computing Fisher...")
         for p in self.model.parameters():
             p.grad2_acc = torch.zeros_like(p.data)
             p.grad_counter = 0

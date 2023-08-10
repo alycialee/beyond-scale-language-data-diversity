@@ -330,6 +330,65 @@ def test_diversity_coefficient():
         with open(output_dir / f'results{today}.json', 'w') as f:
             json.dump(results, f, indent=4)
 
+def test_interleaved_data_set_2_data_loader():
+    """ https://colab.research.google.com/drive/1QWDhA6Q64qijXYnwIGn63Aq9Eg5qt8tQ#scrollTo=Wjyy6QYimvIm """
+    remove_columns = []
+    # -- Get probe network
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    from datasets import interleave_datasets
+
+    path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
+    probabilities = [1.0/len(path)] * len(path)
+    batch_size = 512
+
+    # -- Get data set
+    # remove_columns = ['text', 'timestamp', 'url']
+    # keep_col = ['text']
+    # keep the strings in dataaset.column_names that intersect with keep_col str list, one liner
+    print('-- interleaving datasets')
+    datasets = [load_dataset(path, name, streaming=True, split="train").with_format("torch") for path, name in zip(path, name)]
+    [print(f'{dataset.description=}') for dataset in datasets]
+    dataset = interleave_datasets(datasets, probabilities)
+    # remove_columns = [col for col in dataset.column_names if col not in keep_col]
+    remove_columns = dataset.column_names
+    print(f'{dataset=}')
+    batch = dataset.take(batch_size)
+
+    # - Prepare functions to tokenize batch
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(batch)
+    print(f'{next(iter(tokenized_batch))=}')
+
+    # -- Get data loader
+    from torch.utils.data import DataLoader, Dataset
+
+    # def collate_tokenize(data):
+    #     print(f'{data[0]=}')
+    #     text_batch = [element["text"] for element in data]
+    #     tokenized = tokenizer(text_batch, padding='longest', truncation=True, return_tensors='pt')
+    #     return tokenized
+    # data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
+    data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False)
+    # num_batches = len(list(data_loader))
+    batch = next(iter(data_loader))
+    print(f'{batch=}')
+    print('Done!\a')
+
+
 # -- Experiments
 
 def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights():
@@ -356,11 +415,10 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     # mode='online'
     # num_batches = 600
     # path, name = 'c4', 'en'
-    path, name = "wikitext", 'wikitext-103-v1'
+    # path, name = "wikitext", 'wikitext-103-v1'
     # probabilities = None
-    # path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
-    # path, name = ['wikitext', 'wikitext'], ['wikitext-103-v1', 'wikitext-103-v1']
-    # probabilities = [1.0/len(path)] * len(path)
+    path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
+    probabilities = [1.0/len(path)] * len(path)
     # probablilities = [0, 1.0]
     # not changing
     batch_size = 512
@@ -409,8 +467,8 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
 
     # -- Compute diversity coefficient
     # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=False, shuffle=False)  # hardcoded for debugging
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=False, shuffle=False)  # hardcoded for debugging
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
     wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})
@@ -445,6 +503,7 @@ if __name__ == '__main__':
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
     # test_diversity_coefficient()
-    experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
+    test_interleaved_data_set_2_data_loader()
+    # experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
