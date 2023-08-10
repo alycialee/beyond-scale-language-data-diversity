@@ -156,36 +156,39 @@ class Task2Vec:
             return embedding
         
     ### LLM DIV 
-    def _finetune_classifier(self, dataset: Dataset, loader_opts: dict = None, classifier_opts: dict = None, max_samples=None,  epochs = 5, learning_rate = 5e-5, adam_epsilon = 1e-8):
+    def _finetune_classifier(self, dataset: Dataset, loader_opts: dict = None, classifier_opts: dict = None, max_samples=None, epochs = 5, learning_rate = 5e-5, adam_epsilon = 1e-8):
         """Fits the last layer of the HuggingFace transformer probe network."""
         logging.info("Finetune classifier...")
         if loader_opts is None:
             loader_opts = {}
         if classifier_opts is None:
             classifier_opts = {}
-        print(f'{type(dataset)=}')
-        print(f'{dataset.__class__=}')
-        print(f'{isinstance(dataset, Dataset)=}')
-        for i, d in enumerate(dataset):
-            assert isinstance(d, dict)
-            dd = dataset[i]
-            assert isinstance(dd, dict)
-        assert i == 255
-        print(f'{len(list(dataset))=}')
-        data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+        # print(f'{type(dataset)=}')
+        # print(f'{dataset.__class__=}')
+        # print(f'{isinstance(dataset, Dataset)=}')
+        # for i, d in enumerate(dataset):
+        #     assert isinstance(d, dict)
+        #     dd = dataset[i]
+        #     assert isinstance(dd, dict)
+        # assert i == 255
+        # print(f'{len(list(dataset))=}')
+        # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+        #                          num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+        # print(f'{len(list(dataset))=}')
+        # print(f'{dataset=}')
+        # print(f'{next(iter(dataset))=}')
+        # for b, data in enumerate(data_loader):
+        #     print(f'{b=}')
+        #     print(f'{data=}')
+        # print(f'{next(iter(data_loader))=}')
+        data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-        print(f'{len(list(dataset))=}')
-        print(f'{dataset=}')
-        print(f'{next(iter(dataset))=}')
-        for b, data in enumerate(data_loader):
-            print(f'{b=}')
-            print(f'{data=}')
-        print(f'{next(iter(data_loader))=}')
 
         device = next(self.model.parameters()).device
         print("MODEL DEVICE: ", device)
         
-        num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
+        # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
+        num_examples = len(list(data_loader)) 
         n_batches = num_examples
         
         optimizer_grouped_parameters = [

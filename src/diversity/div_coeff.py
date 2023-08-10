@@ -30,6 +30,7 @@ def get_diversity_coefficient(dataset,
                             distance = 'cosine',
                             verbose: bool = False,
                             debug: bool = False,
+                            shuffle: bool = True,  # False for faster debugging/testing but it won't be shuffled
                           ) -> dict:
     """
     Compute the diversity coefficient of a dataset using a probe network.
@@ -37,6 +38,7 @@ def get_diversity_coefficient(dataset,
     If you want the diveristy coefficient and it's confidence interval (ci), use the following:
         div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     """
+    print(f'{shuffle=}') if verbose else None
     if num_batches < 3:
         print(f'Warning: num_batches must be >= 3, but got {num_batches=} otherwise you only get 1 comparison so 1 distance value')
     # - Compute embeddings
@@ -44,7 +46,7 @@ def get_diversity_coefficient(dataset,
     for batch_num in range(num_batches):
         print(f'--> {batch_num=}\n') if verbose else None
         # - Get batch
-        shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed)
+        shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
         raw_text_batch = shuffled_dataset.take(batch_size)
         tokenized_batch = map(raw_text_batch)
         if verbose:
@@ -157,13 +159,14 @@ def print_examples_from_dataset(dataset, preprocess=preprocess, map=my_map, batc
     counts = 0
     for example in list(batch):
         # print()
-        print(f'{example.keys()=}')
-        if 'url' in example:
-            counts += 1
-            # print(f'{example=}')
-        else:
-            print(f'{example=}')
-    print(f'{counts=}')
+        print(f'{example["text"]=}')
+    #     print(f'{example.keys()=}')
+    #     if 'url' in example:
+    #         counts += 1
+    #         # print(f'{example=}')
+    #     else:
+    #         print(f'{example=}')
+    # print(f'{counts=}')
 
 # -- Tests, Examples
 
@@ -342,21 +345,22 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     - div c4+wt, respect gpt3 weights
     then repeat all with pt (no ft)
     """
+    probabilities = []
     # -- Setup wandb
     import wandb
     # - Dryrun
-    # mode = 'dryrun'
-    # num_batches = 3
+    mode = 'dryrun'
+    num_batches = 3
 
     # - Online (real experiment)
-    mode='online'
-    num_batches = 600
+    # mode='online'
+    # num_batches = 600
     # path, name = 'c4', 'en'
-    # path, name = "wikitext", 'wikitext-103-v1'
+    path, name = "wikitext", 'wikitext-103-v1'
     # probabilities = None
-    path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
+    # path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
     # path, name = ['wikitext', 'wikitext'], ['wikitext-103-v1', 'wikitext-103-v1']
-    probabilities = [1.0/len(path)] * len(path)
+    # probabilities = [1.0/len(path)] * len(path)
     # probablilities = [0, 1.0]
     # not changing
     batch_size = 512
@@ -386,10 +390,10 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     # -- Get data set
     remove_columns = []
     if isinstance(path, str):
-        # dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
-        # remove_columns = ["text", "timestamp", "url"] if path == 'c4' else []
-        raise NotImplementedError
+        dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+        remove_columns = ["text", "timestamp", "url"] if path == 'c4' else []
     else:
+        print('-- interleaving datasets')
         datasets = [load_dataset(path, name, streaming=True, split="train").with_format("torch") for path, name in zip(path, name)]
         [print(f'{dataset.description=}') for dataset in datasets]
         dataset = interleave_datasets(datasets, probabilities)
@@ -401,10 +405,12 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
     # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    print_examples_from_dataset(dataset, batch_size=100)
+    # print_examples_from_dataset(dataset, batch_size=100)
 
     # -- Compute diversity coefficient
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=False, shuffle=False)  # hardcoded for debugging
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
     wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})
@@ -438,7 +444,7 @@ if __name__ == '__main__':
     # -- Run tests
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
-    test_diversity_coefficient()
-    # experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
+    # test_diversity_coefficient()
+    experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')
