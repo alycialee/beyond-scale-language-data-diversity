@@ -353,7 +353,8 @@ def sanity2_af_is_aligned_to_af():
 
     # -- Compute alignment
     print('-- Compute alignment...')
-    results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=batch_size)
+    # results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=batch_size)
+    results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=False, batch_size=batch_size)
     print(f'{results=}')
 
 
