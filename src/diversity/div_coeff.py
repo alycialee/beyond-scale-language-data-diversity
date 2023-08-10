@@ -90,41 +90,55 @@ def cross_diversity_coefficient(dataset_target,
                                 distance = 'cosine',
                           ) -> dict:
     """ 
-    Todo: ask Alycia how she did this in the paper. Please compare with her implementation and report which one we prefer.     
     """
-    # - Compute embedding of target
-    lossses: list[dict] = []
-    embeddings: list[dict] = []
-    cross_distances = []
-    for batch_num in range(num_batches):
-        # - Compute embedding of target
-        shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
-        tokenized_batch = get_mapped_batch_fn(shuffled_dataset)
-        embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
+    # # - Compute embedding of target
+    # lossses: list[dict] = []
+    # embeddings: list[dict] = []
+    # cross_distances = []
+    # for batch_num in range(num_batches):
+    #     # - Get target shuffled data
+    #     shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
+    #     # raw_text_batch = shuffled_dataset.take(batch_size)
+    #     raw_text_batch = dataset_target.take(batch_size)
+    #     tokenized_batch = map_target(raw_text_batch)
+    #     if verbose:
+    #         print(f'{raw_text_batch=}')
+    #         print(f'{tokenized_batch=}')
+    #         # time_start = time.time()
+    #         # really slow with suffle it seems
+    #         # print(f'{next(iter(raw_text_batch))=}')
+    #         # print(f'{next(iter(tokenized_batch))=}')
+    #         # print(f'Time it took: {time.time() - time_start} seconds \a\n')
+        
+    #     # - Get Task2Vec embedding for batch
+    #     if not debug:
+    #         embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
+    #     else:
+    #         embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+    #     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
-        # - Compute embedding of source
-        shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed)
-        tokenized_batch = get_mapped_batch_fn(shuffled_dataset)
-        embedding_source, loss_source = Task2Vec(probe_network).embed(tokenized_batch)
+    #     # - Get source shuffled data
+    #     shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed)
+    #     # raw_text_batch = shuffled_dataset.take(batch_size)
+    #     raw_text_batch = dataset_target.take(batch_size)
+    #     tokenized_batch = map_source(raw_text_batch)
+        
+    #     # - Get Task2Vec embedding for batch
+    #     if not debug:
+    #         embedding_source, loss_source = Task2Vec(probe_network).embed(tokenized_batch)
+    #     else:
+    #         embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+    #     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
-        # - Compute cross distance
-        distance_matrix = task_similarity.pdist([embedding_target, embedding_source], distance=distance)
-        cross_dist = distance_matrix[0, 1]
+    # # - Compute cross diversity coefficient
+    # div_coeff, div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distances)
 
-        # - Collect results
-        losses.append({'loss_target': loss_target, 'loss_source': loss_source})
-        embeddings.append({'embedding_target': embedding_target, 'embedding_source': embedding_source})
-        cross_distances.append(cross_dist)
-    
-    # - Compute cross diversity coefficient
-    div_coeff, div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distances)
-
-    # -- Return results
-    results: dict = {'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci,
-                    'embeddings': embeddings,
-                    'distance_matrix': distance_matrix,
-                    'losses': losses,
-                    "num_batches": num_batches}
+    # # -- Return results
+    # results: dict = {'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci,
+    #                 'embeddings': embeddings,
+    #                 'distance_matrix': distance_matrix,
+    #                 'losses': losses,
+    #                 "num_batches": num_batches}
     return results
     
 def get_tokenized_batch(batch):

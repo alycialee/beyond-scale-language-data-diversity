@@ -90,15 +90,15 @@ def alignment_task2vec(dataset_target,
         embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
-    # - Compute alignment
-    distance_matrix = task_similarity.pdist([embedding_target, embedding_source], distance=distance)
-    align = 1 - distance_matrix[0, 1]
-    align_ci = task_similarity.stats_of_distance_matrix(distance_matrix)[1]
-
     # - Compute results
     embeddings, losses = [], []
     embeddings.append({'embedding_target': embedding_target, 'embedding_source': embedding_source})
     losses.append({'loss_target': loss_target, 'loss_source': loss_source})
+    
+    # - Compute alignment
+    distance_matrix = task_similarity.pdist([embedding_target, embedding_source], distance=distance)
+    align = 1 - distance_matrix[0, 1]
+    align_ci = task_similarity.stats_of_distance_matrix(distance_matrix)[1]
 
     # - Results
     results: dict = {'align': align, 'align_ci': align_ci,
@@ -197,6 +197,12 @@ def sanity2_af_is_aligned_to_af():
     print(f'{results=}')
 
 def issues_with_my_dataset():
+    """
+    claude attempts: https://claude.ai/chat/5e3d2467-35af-47a7-9a6b-bbbec2283f96
+    colab: https://colab.research.google.com/drive/1sbs95as_66mtK9VK_vbaE9gLE-Tjof1-#scrollTo=cBHwA-asBd-F
+    so: https://stackoverflow.com/questions/76872115/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-wi
+    hf discuss: https://discuss.huggingface.co/t/how-does-one-create-a-pytorch-data-loader-with-a-custom-hugging-face-data-set-without-having-errors/50204
+    """
     print(f'Running function: {issues_with_my_dataset=}')
     # batch_size = 512
     batch_size = 10
@@ -279,7 +285,7 @@ def issues_with_my_dataset():
     # print(f'{next(iter(tokenized_batch))=}')
 
     from torch.utils.data import Dataset, DataLoader, SequentialSampler
-    dataset = tokenized_batch
+    eataset = tokenized_batch
     print(f'{type(dataset)=}')
     print(f'{dataset.__class__=}')
     print(f'{isinstance(dataset, Dataset)=}')
