@@ -63,6 +63,7 @@ reauth
 # - Min setup code for run
 source $AFS/.bashrc.lfs
 conda activate beyond_scale
+echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
 
 # -- Run
 python ~/beyond-scale-language-data-diversity/src/diversity/div_coeff.py

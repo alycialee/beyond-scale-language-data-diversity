@@ -398,7 +398,7 @@ def test_interleaved_data_set_2_data_loader():
 
 # -- Experiments
 
-def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights():
+def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights():
     """
     Get divs using pt ft, pt (rand, rand ft?) 
     - div c4 
@@ -415,18 +415,16 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     # -- Setup wandb
     import wandb
     # - Dryrun
-    mode = 'dryrun'
-    num_batches = 3
+    # mode = 'dryrun'
+    # num_batches = 3
 
     # - Online (real experiment)
-    # mode='online'
-    # num_batches = 600
+    mode='online'
+    num_batches = 600
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
-    # probabilities = None
     path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
     probabilities = [1.0/len(path)] * len(path)
-    # probablilities = [0, 1.0]
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
@@ -434,9 +432,9 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     print(f'{run_name=}')
 
     # - Init wandb
-    wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size})
     debug: bool = mode == 'dryrun'
+    wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug})
     print(f'{debug=}')
     print(f'{wandb.config=}')
 
@@ -453,7 +451,6 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
     probe_network = probe_network.to(device)
 
     # -- Get data set
-    remove_columns = []
     if isinstance(path, str):
         dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
         remove_columns = ["text", "timestamp", "url"] if path == 'c4' else []
@@ -463,19 +460,23 @@ def experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_wi
         [print(f'{dataset.description=}') for dataset in datasets]
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
-    # batch = dataset.take(batch_size)
+    batch = dataset.take(batch_size)
+    column_names = next(iter(dataset)).keys()
+    print(f'{column_names=}')
+
     # - Prepare functions to tokenize batch
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    remove_columns = column_names  # remove all keys that are not tensors to avoid bugs in collate function in task2vec's pytorch data loader
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # print_examples_from_dataset(dataset, batch_size=100)
+    tokenized_batch = map(batch)
+    print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute diversity coefficient
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
     # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=False, shuffle=False)  # hardcoded for debugging
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
     wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})
@@ -510,7 +511,7 @@ if __name__ == '__main__':
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
     # test_diversity_coefficient()
-    test_interleaved_data_set_2_data_loader()
-    # experiment_compute_diveristy_coeff_singlee_dataset_then_combined_datasets_with_domain_weights()
-    # -- End tests, report how long it took
-    print(f'Time it took: {time.time() - time_start} seconds \a\n')
+    # test_interleaved_data_set_2_data_loader()
+    experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
+    # -- End tests, report how long it took in seconds, minutes, hours, days
+    print(f'Time it took to run {__file__}: {time.time() - time_start} seconds, {(time.time() - time_start)/60} minutes, {(time.time() - time_start)/60/60} hours, {(time.time() - time_start)/60/60/24} days\a')
