@@ -38,7 +38,7 @@ def get_diversity_coefficient(dataset,
     If you want the diveristy coefficient and it's confidence interval (ci), use the following:
         div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     """
-    print(f'{shuffle=}') if verbose else None
+    print(f'{shuffle=}')
     if num_batches < 3:
         print(f'Warning: num_batches must be >= 3, but got {num_batches=} otherwise you only get 1 comparison so 1 distance value')
     # - Compute embeddings
@@ -404,14 +404,16 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     - div c4 
     - div wt = wt-103
     Then with unioned datasets
-    - div c4+wt, uniform
-    - div c4+wt, data set size proportions (using GBs)
+    - div c4+wt, uniform [0.5, 0.5]
+    - # div c4+wt, data set size proportions (using GBs)
     - div c4+wt, respect doremi
     - div c4+wt, respect the pile
     - div c4+wt, respect gpt3 weights
     then repeat all with pt (no ft)
     """
+    from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
     probabilities = []
+    data_mixture_name = None
     # -- Setup wandb
     import wandb
     # - Dryrun
@@ -424,17 +426,19 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
     path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
-    probabilities = [1.0/len(path)] * len(path)
+    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
+    probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
-    run_name = f'{path} div_coeff_{num_batches=} ({today=} {probabilities=})'
+    run_name = f'{path} div_coeff_{num_batches=} ({today=} {data_mixture_name=} {probabilities=})'
     print(f'{run_name=}')
 
     # - Init wandb
     debug: bool = mode == 'dryrun'
     wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug})
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name})
     print(f'{debug=}')
     print(f'{wandb.config=}')
 

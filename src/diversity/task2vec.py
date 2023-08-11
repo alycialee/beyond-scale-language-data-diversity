@@ -200,6 +200,7 @@ class Task2Vec:
                         'attention_mask': batch['attention_mask'].to(device)}
                 logits = self.model(**inputs, labels=inputs["input_ids"]).logits
                 loss = self.loss_fn(logits, inputs["input_ids"], ignore_index=50256)
+                print(f'Initial loss {loss.item()} ({step=})') if step == 0 else None
                 error = get_error(logits, inputs['input_ids'], ignore_index=50256)
                 loss.backward()
                 optimizer.step()
@@ -213,7 +214,7 @@ class Task2Vec:
             if classifier_opts.get("break_early", False):
                 break
             logging.info(f"[epoch {epoch}]: " + "\t".join(f"{k}: {v}" for k, v in metrics.avg.items()))
-        print(f'\nfinal loss after fitting final layer {loss=}')
+        print(f'\nfinal loss after fitting final layer loss {loss.item()}')
         return loss.item()
 
     ### LLM DIV
