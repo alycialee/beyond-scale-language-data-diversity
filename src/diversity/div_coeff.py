@@ -345,47 +345,54 @@ def test_interleaved_data_set_2_data_loader():
     device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
     probe_network = probe_network.to(device)
 
+    # -- Get data set
     from datasets import interleave_datasets
 
     path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
     probabilities = [1.0/len(path)] * len(path)
     batch_size = 512
-
-    # -- Get data set
-    # remove_columns = ['text', 'timestamp', 'url']
-    # keep_col = ['text']
-    # keep the strings in dataaset.column_names that intersect with keep_col str list, one liner
-    print('-- interleaving datasets')
     datasets = [load_dataset(path, name, streaming=True, split="train").with_format("torch") for path, name in zip(path, name)]
     [print(f'{dataset.description=}') for dataset in datasets]
     dataset = interleave_datasets(datasets, probabilities)
-    # remove_columns = [col for col in dataset.column_names if col not in keep_col]
-    remove_columns = dataset.column_names
     print(f'{dataset=}')
     batch = dataset.take(batch_size)
+    column_names = next(iter(batch)).keys()
+    print(f'{column_names=}')
 
     # - Prepare functions to tokenize batch
     def preprocess(examples):
         return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    remove_columns = column_names
+    print(f'{remove_columns=}')
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    # tokenized_batch = batch.map(preprocess, batched=True, remove_columns=remove_columns)
     tokenized_batch = map(batch)
     print(f'{next(iter(tokenized_batch))=}')
 
     # -- Get data loader
     from torch.utils.data import DataLoader, Dataset
 
-    # def collate_tokenize(data):
-    #     print(f'{data[0]=}')
-    #     text_batch = [element["text"] for element in data]
-    #     tokenized = tokenizer(text_batch, padding='longest', truncation=True, return_tensors='pt')
-    #     return tokenized
-    # data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
     data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False)
-    # num_batches = len(list(data_loader))
     batch = next(iter(data_loader))
     print(f'{batch=}')
+
+    # - test 2
+    batch = dataset.take(batch_size)
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=[])
+    tokenized_batch = map(batch)
+    print(f'{next(iter(tokenized_batch))=}')
+
+    def collate_tokenize(data):
+        text_batch = [element["text"] for element in data]
+        tokenized = tokenizer(text_batch, padding='longest', max_length=128, truncation=True, return_tensors='pt')
+        return tokenized
+    data_loader = DataLoader(tokenized_batch, shuffle=False, batch_size=8, num_workers=0, drop_last=False, collate_fn=collate_tokenize)
+    batch = next(iter(data_loader))
+    print(f'{batch=}')
+
     print('Done!\a')
 
 
