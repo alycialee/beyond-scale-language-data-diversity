@@ -44,7 +44,7 @@ def get_diversity_coefficient(dataset,
     # - Compute embeddings
     embeddings, losses = [], []
     for batch_num in range(num_batches):
-        print(f'--> {batch_num=}\n') if verbose else None
+        print(f'--> {batch_num=}\n')
         # - Get batch
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
         raw_text_batch = shuffled_dataset.take(batch_size)
@@ -414,11 +414,12 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
     probabilities = []
     data_mixture_name = None
+    streaming = True
     # -- Setup wandb
     import wandb
     # - Dryrun
-    # mode = 'dryrun'
-    # num_batches = 3
+    mode = 'dryrun'
+    num_batches = 3
 
     # - Online (real experiment)
     mode='online'
@@ -426,19 +427,34 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
     path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
-    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
-    probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
+    # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
+    # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
+    # probabilities, data_mixture_name = [0.25, 0.75], '[0.25, 0.75]' 
+    # path, name = 'EleutherAI/pile', 'all'
+    # path, name = 'conceptofmind/pile_cc', 'sep_ds'
+    streaming = False
+    # path, name = 'conceptofmind/pile_cc', 'sep_ds'
+    # path, name = 'EleutherAI/pile', 'hacker_news' 
+    # path, name = 'EleutherAI/pile', 'nih_exporter'  # https://github.com/huggingface/datasets/issues/6144
+    # path, name = 'EleutherAI/pile', 'pubmed' 
+    # path, name = 'EleutherAI/pile', 'uspto' 
+    # -
+    ## path, name, data_files_prefix  = 'json', 'enron_emails', 'https://the-eye.eu/public/AI/pile_preliminary_components/'
+    # path, name, data_files_prefix  = 'bin', 'HackerNewsDataset_text_document.bin', 'https://the-eye.eu/public/AI/pile_neox/data/'
+    # path, name, data_files_prefix  = 'csv', 'hacker_news', 'https://huggingface.co/datasets/EleutherAI/pile/viewer/hacker_news/train/'
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
-    run_name = f'{path} div_coeff_{num_batches=} ({today=} {data_mixture_name=} {probabilities=})'
+    run_name = f'{path} div_coeff_{num_batches=} ({today=} ({name=}) {data_mixture_name=} {probabilities=})'
     print(f'{run_name=}')
 
     # - Init wandb
     debug: bool = mode == 'dryrun'
-    wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name})
+    run = wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming})
+    # run.notify_on_failure() # https://community.wandb.ai/t/how-do-i-set-the-wandb-alert-programatically-for-my-current-run/4891
     print(f'{debug=}')
     print(f'{wandb.config=}')
 
@@ -455,16 +471,24 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     probe_network = probe_network.to(device)
 
     # -- Get data set
+    def my_load_dataset(path, name):
+        print(f'{path=} {name=} {streaming=}')
+        if path == 'json' or path == 'bin' or path == 'csv':
+            print(f'{data_files_prefix+name=}')
+            return load_dataset(path, data_files=data_files_prefix+name, streaming=streaming, split="train").with_format("torch")
+        else:
+            return load_dataset(path, name, streaming=streaming, split="train").with_format("torch")
+    # - get data set for real now
     if isinstance(path, str):
-        dataset = load_dataset(path, name, streaming=True, split="train").with_format("torch")
-        remove_columns = ["text", "timestamp", "url"] if path == 'c4' else []
+        dataset = my_load_dataset(path, name)
     else:
         print('-- interleaving datasets')
-        datasets = [load_dataset(path, name, streaming=True, split="train").with_format("torch") for path, name in zip(path, name)]
+        datasets = [my_load_dataset(path, name).with_format("torch") for path, name in zip(path, name)]
         [print(f'{dataset.description=}') for dataset in datasets]
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
     batch = dataset.take(batch_size)
+    print(f'{next(iter(batch))=}')
     column_names = next(iter(dataset)).keys()
     print(f'{column_names=}')
 

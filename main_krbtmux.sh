@@ -30,6 +30,7 @@ python -c "import torch; print(torch.bfloat16);"
 
 # - start krbtmux
 #pkill -9 tmux -u brando9; pkill -9 krbtmux -u brando9; pkill -9 reauth -u brando9; pkill -9 python -u brando9; pkill -9 wandb-service* -u brando9;
+ssh brando9@hyperturing1.stanford.edu
 krbtmux
 reauth
 tmux new -s rand
