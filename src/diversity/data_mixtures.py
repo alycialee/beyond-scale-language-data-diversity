@@ -51,3 +51,38 @@ def get_llama_v1_based_data_mixture_for_c4_wt103() -> list[float]:
     print(f'{llama_v1_c4/llama_v1_wikiepdia=}')
     print(f'{c4/wt103=}')
     return probabilities_c4_wt103, 'llama_v1_based'
+
+# -- 5 subsets of pile
+
+def get_uniform_data_mixture_5subsets_of_pile(name: list = [None, None, None, None, None]) -> typle[list[float], str]:
+    """
+    Default is 5 subsets of pile. 
+    """
+    probabilities = [1/len(name)] * len(name)
+    mixture_name = f'{probabilities}'
+    return probabilities, mixture_name
+
+def get_doremi_data_mixture_5subsets_of_pile(name: list) -> typle[list[float], str]:
+    """
+    Default is 5 subsets of pile. 
+
+    ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto']
+    """
+    # hardcoded dictionary with doremi mixtures 
+    mix_doremi = {
+        'sep_ds': 0.23,  # pile-cc
+        'hacker_news': 0.45,
+        'nih_exporter': 0.67,
+        'pubmed': 0.89,
+        'uspto': 0.12
+    }
+    # - transform mixtures to respect the original dore mi
+
+    # - convert the mix doremi to list respect order given by user
+    probabilities = []
+    for subset_name in name:
+        mixture_subset = doremi_mixture_value[name]
+        probabilities.append(mixture_subset)
+    mixture_name = 'doremi_5subsets_of_pile'
+    return probabilities, mixture_name
+

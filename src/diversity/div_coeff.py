@@ -12,6 +12,7 @@ import json
 
 from torch import nn
 import numpy as np
+import random
 
 from datasets import load_dataset
 from datasets import interleave_datasets
@@ -25,7 +26,7 @@ def get_diversity_coefficient(dataset,
                             tokenizer = None,
                             batch_size: int = 512,
                             num_batches: int = 600, 
-                            seed = 0, 
+                            seed: int = 0, 
                             buffer_size: int = 500_000, 
                             distance = 'cosine',
                             verbose: bool = False,
@@ -59,9 +60,9 @@ def get_diversity_coefficient(dataset,
 
         # - Get Task2Vec embedding for batch
         if not debug:
-            embedding, loss = Task2Vec(probe_network).embed(tokenized_batch)
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
         else:
-            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
         print(f'{loss=}\n{embedding=}\n') if verbose else None
         
         # - Collect results
@@ -411,18 +412,21 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     - div c4+wt, respect gpt3 weights
     then repeat all with pt (no ft)
     """
+    import random
     from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
     probabilities = []
     data_mixture_name = None
     streaming = True
-    data_files = []
+    data_files = [None]
+    seed = 0
     # -- Setup wandb
     import wandb
     # - Dryrun
     # mode = 'dryrun'; num_batches = 3
+    # mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
 
     # - Online (real experiment)
-    mode='online'; num_batches = 600
+    mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
     # path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
@@ -444,7 +448,10 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
     # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
     # path, name, data_files = 'parquet', 'pubmed', urls_pubmed
-    path, name, data_files = 'parquet', 'uspto', urls_uspto
+    # path, name, data_files = 'parquet', 'uspto', urls_uspto
+    # - 5 subsets of the pile interleaved
+    path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
+    probabilities, data_mixture_name = [1.0/len(path)] * len(path), f'{[1.0/len(path)] * len(path)=}'
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
@@ -454,7 +461,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - Init wandb
     debug: bool = mode == 'dryrun'
     run = wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming, 'data_files': data_files})
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming, 'data_files': data_files, 'seed': seed})
     # run.notify_on_failure() # https://community.wandb.ai/t/how-do-i-set-the-wandb-alert-programatically-for-my-current-run/4891
     print(f'{debug=}')
     print(f'{wandb.config=}')
@@ -473,7 +480,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     probe_network = probe_network.to(device)
 
     # -- Get data set
-    def my_load_dataset(path, name):
+    def my_load_dataset(path, name, data_files=data_files):
         print(f'{path=} {name=} {streaming=}')
         if path == 'json' or path == 'bin' or path == 'csv':
             print(f'{data_files_prefix+name=}')
@@ -487,9 +494,15 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     if isinstance(path, str):
         dataset = my_load_dataset(path, name)
     else:
-        print('-- interleaving datasets')
-        datasets = [my_load_dataset(path, name).with_format("torch") for path, name in zip(path, name)]
-        [print(f'{dataset.description=}') for dataset in datasets]
+        # -Interleaving datasets
+        print('- Interleaving datasets')
+        datasets = [my_load_dataset(path, name, data_files).with_format("torch") for path, name, data_files in zip(path, name, data_files)]
+        [print(f'{dataset.description=}') for dataset in datasets]  # print description if available
+        # - make sure all datasets have the same columns to avoid interleave to complain
+        columns_to_remove = [col for dataset in datasets for col in dataset.column_names if col != 'text']
+        columns_to_remove = list(set(columns_to_remove))  # remove duplicates
+        datasets = [dataset.remove_columns(columns_to_remove) for dataset in datasets]
+        # - interleave
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
     print(f'{type(dataset)=}')
@@ -511,9 +524,12 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute diversity coefficient
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=True, shuffle=False)  # hardcoded for debugging
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, debug=False, shuffle=False)  # hardcoded for debugging
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, debug=debug)
+    print(f'-- Compute diversity coefficient')
+    print(f'{seed=}, {streaming=}')
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=False)  # hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=True)  # hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=False, shuffle=False)  # hardcoded for debugging
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug)
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
     wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})

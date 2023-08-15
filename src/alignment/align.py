@@ -41,7 +41,7 @@ def alignment_task2vec(dataset_target,
                         probe_network: nn.Module,
                         tokenizer = None,
                         batch_size: int = 1024,
-                        seed = 0, 
+                        seed: int = 0, 
                         buffer_size: int = 500_000, 
                         distance = 'cosine',
                         verbose: bool = False,
@@ -72,9 +72,9 @@ def alignment_task2vec(dataset_target,
     
     # - Get Task2Vec embedding for batch
     if not debug:
-        embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
+        embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
     else:
-        embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+        embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
     # - Get source shuffled data
@@ -85,9 +85,9 @@ def alignment_task2vec(dataset_target,
     
     # - Get Task2Vec embedding for batch
     if not debug:
-        embedding_source, loss_source = Task2Vec(probe_network).embed(tokenized_batch)
+        embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
     else:
-        embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
+        embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
     # - Compute results
