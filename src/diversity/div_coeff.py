@@ -440,10 +440,11 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'EleutherAI/pile', 'pubmed' 
     # path, name = 'EleutherAI/pile', 'uspto' 
     # - 5 subsets of pile using hf data set viewer (parquet)) 
-    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed
+    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
     # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
     # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
-    path, name, data_files = 'parquet', 'pubmed', urls_pubmed
+    # path, name, data_files = 'parquet', 'pubmed', urls_pubmed
+    path, name, data_files = 'parquet', 'uspto', urls_uspto
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
