@@ -415,35 +415,35 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     probabilities = []
     data_mixture_name = None
     streaming = True
+    data_files = []
     # -- Setup wandb
     import wandb
     # - Dryrun
-    mode = 'dryrun'
-    num_batches = 3
+    # mode = 'dryrun'; num_batches = 3
 
     # - Online (real experiment)
-    mode='online'
-    num_batches = 600
+    mode='online'; num_batches = 600
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
-    path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
-    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
+    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
     # probabilities, data_mixture_name = [0.25, 0.75], '[0.25, 0.75]' 
     # path, name = 'EleutherAI/pile', 'all'
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
-    streaming = False
+    # streaming = False
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # path, name = 'EleutherAI/pile', 'hacker_news' 
     # path, name = 'EleutherAI/pile', 'nih_exporter'  # https://github.com/huggingface/datasets/issues/6144
     # path, name = 'EleutherAI/pile', 'pubmed' 
     # path, name = 'EleutherAI/pile', 'uspto' 
-    # -
-    ## path, name, data_files_prefix  = 'json', 'enron_emails', 'https://the-eye.eu/public/AI/pile_preliminary_components/'
-    # path, name, data_files_prefix  = 'bin', 'HackerNewsDataset_text_document.bin', 'https://the-eye.eu/public/AI/pile_neox/data/'
-    # path, name, data_files_prefix  = 'csv', 'hacker_news', 'https://huggingface.co/datasets/EleutherAI/pile/viewer/hacker_news/train/'
+    # - 5 subsets of pile using hf data set viewer (parquet)) 
+    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed
+    # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
+    # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
+    path, name, data_files = 'parquet', 'pubmed', urls_pubmed
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
@@ -453,13 +453,14 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - Init wandb
     debug: bool = mode == 'dryrun'
     run = wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming})
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming, 'data_files': data_files})
     # run.notify_on_failure() # https://community.wandb.ai/t/how-do-i-set-the-wandb-alert-programatically-for-my-current-run/4891
     print(f'{debug=}')
     print(f'{wandb.config=}')
 
     # -- Get probe network
-    from datasets import load_dataset
+    from datasets import load_dataset 
+    from datasets.iterable_dataset import IterableDataset
     import torch
     from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
@@ -476,6 +477,9 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         if path == 'json' or path == 'bin' or path == 'csv':
             print(f'{data_files_prefix+name=}')
             return load_dataset(path, data_files=data_files_prefix+name, streaming=streaming, split="train").with_format("torch")
+        elif path == 'parquet':
+            print(f'{data_files=}')
+            return load_dataset(path, data_files=data_files, streaming=streaming, split="train").with_format("torch")
         else:
             return load_dataset(path, name, streaming=streaming, split="train").with_format("torch")
     # - get data set for real now
@@ -487,9 +491,13 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         [print(f'{dataset.description=}') for dataset in datasets]
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
+    print(f'{type(dataset)=}')
+    # datasets.iterable_dataset.IterableDataset
+    # datasets.arrow_dataset.Dataset
+    # dataset = IterableDataset(dataset) if type(dataset) != IterableDataset else dataset  # to force dataset.take(batch_size) to work in non-streaming mode
     batch = dataset.take(batch_size)
     print(f'{next(iter(batch))=}')
-    column_names = next(iter(dataset)).keys()
+    column_names = next(iter(batch)).keys()
     print(f'{column_names=}')
 
     # - Prepare functions to tokenize batch

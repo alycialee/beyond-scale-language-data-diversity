@@ -311,6 +311,7 @@ def sanity2_af_is_aligned_to_af():
     """ Sanity check that data from the same place has low. Prev work showed 0.05 is lower bound.
     so hopefully around that number. """
     batch_size = 8
+    batch_size = 512
     remove_columns = []
     # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()
     token = None
@@ -330,15 +331,18 @@ def sanity2_af_is_aligned_to_af():
     # -- Get batch from dataset
     from datasets import load_dataset
     # path, name = 'brando/debug1_af', 'debug1_af'
+    # https://huggingface.co/datasets/brando/debug0_af/tree/main
     path, name = 'brando/debug0_af', 'debug0_af'
+    # path, name = 'c4', 'en'
     dataset = load_dataset(path, name, streaming=True, split="train", token=token).with_format(type="torch")
     print(f'{dataset.column_names=}')
-    batch = dataset.take(1)
+    batch = dataset.take(batch_size)
     def preprocess_formalize(examples): 
         """ link,formal statement,generated informal statement,solvable by sledgehammer,keep or not,informalization correct """
         informal_statement = examples["generated informal statement"]
         formal_statement = examples["formal statement"]
         text = f'informal statement {informal_statement} formal statement {formal_statement}'
+        # text = examples["text"]
         return tokenizer(text, padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     column_names = next(iter(batch)).keys()
     print(f'{column_names=}')
@@ -353,8 +357,10 @@ def sanity2_af_is_aligned_to_af():
 
     # -- Compute alignment
     print('-- Compute alignment...')
+    print(f'{batch_size=}')
     # results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=True, batch_size=batch_size)
     results = alignment_task2vec(dataset, dataset, map, map, probe_network, verbose=True, debug=False, batch_size=batch_size)
+    print(f'{batch_size=}, {path, name=}')
     print(f'{results=}')
 
 
