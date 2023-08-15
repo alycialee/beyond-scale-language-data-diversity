@@ -33,6 +33,7 @@ python -c "import torch; print(torch.bfloat16);"
 krbtmux
 reauth
 
+ssh brando9@ampere1.stanford.edu
 ssh brando9@hyperturing1.stanford.edu
 tmux ls
 

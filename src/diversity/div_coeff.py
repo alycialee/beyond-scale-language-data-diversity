@@ -444,19 +444,23 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'EleutherAI/pile', 'pubmed' 
     # path, name = 'EleutherAI/pile', 'uspto' 
     # - 5 subsets of pile using hf data set viewer (parquet)) 
-    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
+    # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
     # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
     # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
     # path, name, data_files = 'parquet', 'pubmed', urls_pubmed
     # path, name, data_files = 'parquet', 'uspto', urls_uspto
     # - 5 subsets of the pile interleaved
+    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
+    from diversity.data_mixtures import get_doremi_data_mixture_5subsets_of_pile, get_llama_v1_data_mixtures_5subsets_of_pile
     path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
-    probabilities, data_mixture_name = [1.0/len(path)] * len(path), f'{[1.0/len(path)] * len(path)=}'
+    # probabilities, data_mixture_name = [1.0/len(path)] * len(path), f'{[1.0/len(path)] * len(path)=}'
+    # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
+    probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
     run_name = f'{path} div_coeff_{num_batches=} ({today=} ({name=}) {data_mixture_name=} {probabilities=})'
-    print(f'{run_name=}')
+    print(f'\n---> {run_name=}\n')
 
     # - Init wandb
     debug: bool = mode == 'dryrun'
@@ -503,6 +507,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         columns_to_remove = list(set(columns_to_remove))  # remove duplicates
         datasets = [dataset.remove_columns(columns_to_remove) for dataset in datasets]
         # - interleave
+        print(f'{probabilities=}')
         dataset = interleave_datasets(datasets, probabilities)
     print(f'{dataset=}')
     print(f'{type(dataset)=}')
@@ -526,10 +531,15 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # -- Compute diversity coefficient
     print(f'-- Compute diversity coefficient')
     print(f'{seed=}, {streaming=}')
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=False)  # hardcoded for debugging
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=True)  # hardcoded for debugging
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=False, shuffle=False)  # hardcoded for debugging
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug)
+    # - Debug run
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=False)  # (quick debug) hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=True, shuffle=True)  # (slow debug) hardcoded for debugging
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=False, shuffle=False)  # (real) hardcoded for debugging
+    # - Real run
+    # assert not debug, f'Err: {debug=} for real run'
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=False)
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=True)
+    # - Log results
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')
     wandb.log({'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci})
