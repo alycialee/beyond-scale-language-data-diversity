@@ -96,7 +96,7 @@ def cross_diversity_coefficient(dataset_target,
                                 verbose: bool = False,
                                 debug: bool = False,
                                 shuffle: bool = True,  # False for faster debugging/testing but it won't be shuffled
-                          ) -> dict:
+                            ) -> dict:
     """ """
     # - Compute embedding of target
     losses: list[dict] = []
@@ -133,15 +133,15 @@ def cross_diversity_coefficient(dataset_target,
 
 
     # - Compute cross diversity coefficient
-    embedding_target = [embedding['embedding_target'] for embedding in embeddings]
-    embedding_source = [embedding['embedding_source'] for embedding in embeddings]
+    embeddings_target = [embedding['embedding_target'] for embedding in embeddings]
+    embeddings_source = [embedding['embedding_source'] for embedding in embeddings]
     cross_distance_matrix = task_similarity.cross_pdist(embeddings_target, embeddings_source, distance=distance)
-    cross_div_coeff, cross_div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distance_matrix)
+    cross_div_coeff, cross_div_coeff_ci = task_similarity.stats_cross_distance_matrix(cross_distance_matrix)
 
     # -- Return results
     results: dict = {'cross_div_coeff': cross_div_coeff, 'cross_div_coeff_ci': cross_div_coeff_ci,
                     'embeddings': embeddings,
-                    'distance_matrix': distance_matrix,
+                    'distance_matrix': cross_div_coeff,
                     'losses': losses,
                     "num_batches": num_batches}
     return results
@@ -452,12 +452,12 @@ def cross_div_test():
     # print(f'{next(iter(data_loader))=}')
 
     # -- Compute diversity coefficient
-    results: dict = cross_diversity_coefficient(dataset_target, dataset_target, map, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
+    results: dict = cross_diversity_coefficient(dataset_target, dataset_target, map, map, probe_network, num_batches=2, verbose=True, debug=True, shuffle=False)  # only for debugging
     cross_div_coeff, cross_div_coeff_ci = results['cross_div_coeff'], results['cross_div_coeff_ci']
     print(f'{cross_div_coeff=} {cross_div_coeff_ci=}')
     same_dataset_results = results
 
-    results: dict = cross_diversity_coefficient(dataset_target, dataset_source, map, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
+    results: dict = cross_diversity_coefficient(dataset_target, dataset_source, map, map, probe_network, num_batches=2, verbose=True, debug=True, shuffle=False)  # only for debugging
     cross_div_coeff, cross_div_coeff_ci = results['cross_div_coeff'], results['cross_div_coeff_ci']
     print(f'{cross_div_coeff=} {cross_div_coeff_ci=}')
     different_dataset_results = results
@@ -512,6 +512,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - c4 wt single
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
+    path, name = 'Skylion007/openwebtext', None
     # - c4 wt mix
     path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
     probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()

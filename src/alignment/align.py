@@ -2,36 +2,41 @@ import time
 
 from diversity.task2vec import Task2Vec 
 from diversity import task_similarity
+from diversity.div_coeff import cross_diversity_coefficient
 
 from pathlib import Path
 
 import torch
 import torch.nn as nn
 
-# def alginment_with_diversity_coefficient(dataset_target,
-#                                         dataset_source,
-#                                         get_mapped_batch_fn: callable, 
-#                                         probe_network: nn.Module,
-#                                         tokenizer = None,
-#                                         batch_size: int = 512,
-#                                         num_batches: int = 100, 
-#                                         seed = 0, 
-#                                         buffer_size: int = 500_000, 
-#                                         distance = 'cosine',
-#                           ) -> dict:
-#     """
-#     Alignment v1 - with the Diversity Coefficient
+def alginment_with_diversity_coefficient(dataset_target,
+                                        dataset_source,
+                                        map_target: callable, 
+                                        map_source: callable,
+                                        probe_network: nn.Module,
+                                        tokenizer = None,
+                                        batch_size: int = 512,
+                                        num_batches: int = 100, 
+                                        seed = 0, 
+                                        buffer_size: int = 500_000, 
+                                        distance = 'cosine',
+                                        verbose: bool = False,
+                                        debug: bool = False,
+                                        shuffle: bool = True,  # False for faster debugging/testing but it won't be shuffled
+                                    ) -> dict:
+    """
+    Alignment v1 - with the Diversity Coefficient
     
-#     Given two data sets, compute how aligned they are using probe network f_w by comparing batches across the data sets:
-#         alg1 = align(T, S, f_w) = Align_1(T, S, f_w) = E_{B_s ~ S, B_t ~ T} [1 - d(e_{B_s}, e_{B_t})] =  1 - div(T, S)
-#     where e_{D} is the Task2Vec (diagonal of FIM) embedding of a batch D, and d is cosine distance function.
+    Given two data sets, compute how aligned they are using probe network f_w by comparing batches across the data sets:
+        alg1 = align(T, S, f_w) = Align_1(T, S, f_w) = E_{B_s ~ S, B_t ~ T} [1 - d(e_{B_s}, e_{B_t})] =  1 - div(T, S)
+    where e_{D} is the Task2Vec (diagonal of FIM) embedding of a batch D, and d is cosine distance function.
     
-#     ref: https://arxiv.org/abs/2306.13840
-#     """
-#     results: dict = cross_diversity_coefficient(dataset_target, dataset_source, get_mapped_batch_fn, probe_network, tokenizer, batch_size, num_batches, seed, buffer_size, distance)
-#     results['align'] = 1 - results['div_coeff']
-#     results['align_ci'] = results['div_coeff_ci']
-#     return results
+    ref: https://arxiv.org/abs/2306.13840
+    """
+    results: dict = cross_diversity_coefficient(dataset_target, dataset_source, map_target, map_source, probe_network, tokenizer, batch_size, num_batches, seed, buffer_size, distance, verbose, debug, shuffle)
+    results['cross_align'] = 1 - results['cross_div_coeff']
+    results['cross_align_ci'] = results['cross_div_coeff_ci']
+    return results
 
 
 def alignment_task2vec(dataset_target,
@@ -306,6 +311,86 @@ def demo_finetuning_gpt2_with_collate_passed_to_trainer_on_af_dataset():
     trainer.train()
     print('Done!\a')
 
+def algin_test_cross_div():
+    batch_size = 512
+
+    # -- Get probe network
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get data set
+    path, name = 'c4', 'en'
+    dataset_target = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset_target.take(batch_size)
+    print(f'{next(iter(raw_text_batch))=}')
+    path, name = "wikitext", 'wikitext-103-v1'
+    dataset_source = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset_source.take(batch_size)
+    print(f'{next(iter(raw_text_batch))=}')
+    column_names = next(iter(raw_text_batch)).keys()
+    print(f'{column_names=}')
+
+    # - Prepare functions to tokenize batch
+    remove_columns = column_names  # remove all text columns so tensors in default collate_fn don't crash
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(raw_text_batch)
+    print(f'{next(iter(tokenized_batch))=}')
+
+    # from torch.utils.data import Dataset, DataLoader
+    # dataset = tokenized_batch
+    # print(f'{type(dataset)=}')
+    # print(f'{dataset.__class__=}')
+    # print(f'{isinstance(dataset, Dataset)=}')
+    # for i, d in enumerate(dataset):
+    #     assert isinstance(d, dict)
+    #     # dd = dataset[i]
+    #     # assert isinstance(dd, dict)
+    # loader_opts = {}
+    # classifier_opts = {} 
+    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+    # print(f'{next(iter(data_loader))=}')
+
+    # -- Compute diversity coefficient
+    results: dict = alginment_with_diversity_coefficient(dataset_target, dataset_target, map, map, probe_network, num_batches=2, verbose=True, debug=True, shuffle=False)  # only for debugging
+    cross_align, cross_align_ci = results['cross_align'], results['cross_align_ci']
+    print(f'{cross_align=} {cross_align_ci=}')
+    same_dataset_results = results
+
+    results: dict = alginment_with_diversity_coefficient(dataset_target, dataset_source, map, map, probe_network, num_batches=2, verbose=True, debug=True, shuffle=False)  # only for debugging
+    cross_align, cross_align_ci = results['cross_align'], results['cross_align_ci']
+    print(f'{cross_align=} {cross_align_ci=}')
+    different_dataset_results = results
+    
+    print('Test: same data set cross alignment, so this value should be **larger** than different')
+    print(f'{same_dataset_results=}')
+    print(f'{different_dataset_results=}')
+
+    # -- Save results or not
+    save_results = True
+    if save_results:
+        today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%H_%M')
+        output_dir = Path(f'~/data/div_coeff/{today}').expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        np.save(output_dir / f'distance_matrix{today}.npy', results['distance_matrix'])
+        np.save(output_dir / f'results{today}.npy', results)
+        # Save results as a pretty-printed JSON
+        results = {key: str(value) for key, value in results.items()}
+        with open(output_dir / f'results{today}.json', 'w') as f:
+            json.dump(results, f, indent=4)
+
+
 # - Experiments
 
 def sanity2_af_is_aligned_to_af():
@@ -375,6 +460,7 @@ if __name__ == '__main__':
     # get_tokenized_dataset_to_work_with_pytorch_dataloader_by_removing_columns_without_tenosr()
     # demo_how_to_use_collate_fn_with_pytorch_dataloader()
     # demo_finetuning_gpt2_with_collate_passed_to_trainer_on_af_dataset()
-    sanity2_af_is_aligned_to_af()
+    algin_test_cross_div()
+    # sanity2_af_is_aligned_to_af()
     # -- End tests, report how long it took
     print(f'Time it took: {time.time() - time_start} seconds \a\n')

@@ -343,7 +343,8 @@ def plot_multi_distance_matrix_from_distance_matrix_list(distance_matrix_lst, ti
 def stats_of_distance_matrix(distance_matrix: np.ndarray,
                              remove_diagonal: bool = True,
                              variance_type: str = 'ci_0.95',
-                             get_total: bool = False) -> tuple[float, float]:
+                             get_total: bool = False,
+                             ) -> tuple[float, float]:
     if remove_diagonal:
         # - remove diagonal: ref https://stackoverflow.com/questions/46736258/deleting-diagonal-elements-of-a-numpy-array
         triu: np.ndarray = np.triu(distance_matrix)
@@ -376,6 +377,13 @@ def stats_of_distance_matrix(distance_matrix: np.ndarray,
         return mu, var, total
     else:
         return mu, var
+
+def stats_cross_distance_matrix(distance_matrix: np.ndarray,
+                                remove_diagonal: bool = False,
+                                variance_type: str = 'ci_0.95',
+                                get_total: bool = False,
+                                ) -> tuple[float, float]:
+    return stats_of_distance_matrix(distance_matrix, remove_diagonal=remove_diagonal, variance_type=variance_type, get_total=get_total)
 
 def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt
