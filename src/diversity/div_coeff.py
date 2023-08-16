@@ -49,6 +49,7 @@ def get_diversity_coefficient(dataset,
         # - Get batch
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
         raw_text_batch = shuffled_dataset.take(batch_size)
+        # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(range(batch_size))
         tokenized_batch = map(raw_text_batch)
         if verbose:
             print(f'{raw_text_batch=}')
@@ -83,7 +84,8 @@ def get_diversity_coefficient(dataset,
 
 def cross_diversity_coefficient(dataset_target,
                                 dataset_source,
-                                get_mapped_batch_fn: callable, 
+                                map_target: callable, 
+                                map_source: callable,
                                 probe_network: nn.Module,
                                 tokenizer = None,
                                 batch_size: int = 512,
@@ -91,57 +93,54 @@ def cross_diversity_coefficient(dataset_target,
                                 seed = 0, 
                                 buffer_size: int = 500_000, 
                                 distance = 'cosine',
+                                verbose: bool = False,
+                                debug: bool = False,
+                                shuffle: bool = True,  # False for faster debugging/testing but it won't be shuffled
                           ) -> dict:
-    """ 
-    """
-    # # - Compute embedding of target
-    # lossses: list[dict] = []
-    # embeddings: list[dict] = []
-    # cross_distances = []
-    # for batch_num in range(num_batches):
-    #     # - Get target shuffled data
-    #     shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
-    #     # raw_text_batch = shuffled_dataset.take(batch_size)
-    #     raw_text_batch = dataset_target.take(batch_size)
-    #     tokenized_batch = map_target(raw_text_batch)
-    #     if verbose:
-    #         print(f'{raw_text_batch=}')
-    #         print(f'{tokenized_batch=}')
-    #         # time_start = time.time()
-    #         # really slow with suffle it seems
-    #         # print(f'{next(iter(raw_text_batch))=}')
-    #         # print(f'{next(iter(tokenized_batch))=}')
-    #         # print(f'Time it took: {time.time() - time_start} seconds \a\n')
+    """ """
+    # - Compute embedding of target
+    lossses: list[dict] = []
+    embeddings: list[dict] = []
+    cross_distances = []
+    for batch_num in range(num_batches):
+        # - Get target shuffled data
+        shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset_target
+        raw_text_batch = shuffled_dataset.take(batch_size)
+        tokenized_batch = map_target(raw_text_batch)
         
-    #     # - Get Task2Vec embedding for batch
-    #     if not debug:
-    #         embedding_target, loss_target = Task2Vec(probe_network).embed(tokenized_batch)
-    #     else:
-    #         embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
-    #     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
+        # - Get Task2Vec embedding for batch
+        if not debug:
+            embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
+        else:
+            embedding_target, loss_target = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
+        print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
-    #     # - Get source shuffled data
-    #     shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed)
-    #     # raw_text_batch = shuffled_dataset.take(batch_size)
-    #     raw_text_batch = dataset_target.take(batch_size)
-    #     tokenized_batch = map_source(raw_text_batch)
+        # - Get source shuffled data
+        shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset_source
+        raw_text_batch = shuffled_dataset.take(batch_size)
+        tokenized_batch = map_target(raw_text_batch)
         
-    #     # - Get Task2Vec embedding for batch
-    #     if not debug:
-    #         embedding_source, loss_source = Task2Vec(probe_network).embed(tokenized_batch)
-    #     else:
-    #         embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True}).embed(tokenized_batch, epochs=1)  # only for debugging
-    #     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
+        # - Get Task2Vec embedding for batch
+        if not debug:
+            embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
+        else:
+            embedding_source, loss_source = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
+        print(f'{loss_source=}\n{embedding_source=}\n') if verbose else None
 
-    # # - Compute cross diversity coefficient
-    # div_coeff, div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distances)
+        # - Append results to save later
+        embeddings.append({'embedding_target': embedding_target, 'embedding_source': embedding_source})
+        losses.append({'loss_target': loss_target, 'loss_source': loss_source})
 
-    # # -- Return results
-    # results: dict = {'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci,
-    #                 'embeddings': embeddings,
-    #                 'distance_matrix': distance_matrix,
-    #                 'losses': losses,
-    #                 "num_batches": num_batches}
+    # - Compute cross diversity coefficient
+    cross_distance_matrix = task_similarity.pdist(embeddings, distance=distance)
+    cross_div_coeff, cross_div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distance_matrix)
+
+    # -- Return results
+    results: dict = {'cross_div_coeff': cross_div_coeff, 'cross_div_coeff_ci': cross_div_coeff_ci,
+                    'embeddings': embeddings,
+                    'distance_matrix': distance_matrix,
+                    'losses': losses,
+                    "num_batches": num_batches}
     return results
     
 def get_tokenized_batch(batch):
@@ -397,6 +396,76 @@ def test_interleaved_data_set_2_data_loader():
     print('Done!\a')
 
 
+def cross_div_test():
+    """ """
+    batch_size = 512
+
+    # -- Get probe network
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    # -- Get data set
+    # path, name = 'c4', 'en'
+    dataset_target = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset.take(batch_size)
+    print(f'{next(iter(raw_text_batch))=}')
+    # path, name = "wikitext", 'wikitext-103-v1'
+    dataset_source = load_dataset("wikitext", "wikitext-103-v1", streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset.take(batch_size)
+    print(f'{next(iter(raw_text_batch))=}')
+    column_names = next(iter(raw_text_batch)).keys()
+    print(f'{column_names=}')
+
+    # - Prepare functions to tokenize batch
+    remove_columns = column_names  # remove all text columns so tensors in default collate_fn don't crash
+    def preprocess(examples):
+        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    def map(batch):
+        return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    tokenized_batch = map(raw_text_batch)
+    print(f'{next(iter(tokenized_batch))=}')
+
+    # from torch.utils.data import Dataset, DataLoader
+    # dataset = tokenized_batch
+    # print(f'{type(dataset)=}')
+    # print(f'{dataset.__class__=}')
+    # print(f'{isinstance(dataset, Dataset)=}')
+    # for i, d in enumerate(dataset):
+    #     assert isinstance(d, dict)
+    #     # dd = dataset[i]
+    #     # assert isinstance(dd, dict)
+    # loader_opts = {}
+    # classifier_opts = {} 
+    # data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 1),
+    #                         num_workers=loader_opts.get('num_workers', 0), drop_last=False)
+    # print(f'{next(iter(data_loader))=}')
+
+    # -- Compute diversity coefficient
+    results: dict = cross_diversity_coefficient(dataset_target, dataset_source, map, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
+    cross_div_coeff, cross_div_coeff_ci = results['cross_div_coeff'], results['cross_div_coeff_ci']
+    print(f'{cross_div_coeff=} {cross_div_coeff_ci=}')
+
+    # -- Save results or not
+    save_results = True
+    if save_results:
+        today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%H_%M')
+        output_dir = Path(f'~/data/div_coeff/{today}').expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        np.save(output_dir / f'distance_matrix{today}.npy', results['distance_matrix'])
+        np.save(output_dir / f'results{today}.npy', results)
+        # Save results as a pretty-printed JSON
+        results = {key: str(value) for key, value in results.items()}
+        with open(output_dir / f'results{today}.json', 'w') as f:
+            json.dump(results, f, indent=4)
+
 # -- Experiments
 
 def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights():
@@ -423,40 +492,38 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     import wandb
     # - Dryrun
     # mode = 'dryrun'; num_batches = 3
-    # mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
+    mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
 
     # - Online (real experiment)
     mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
+    # - c4 wt single
     # path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
-    # path, name = ['c4', 'wikitext'], ['en', 'wikitext-103-v1']
-    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # - c4 wt mix
+    path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
+    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
     # probabilities, data_mixture_name = [0.25, 0.75], '[0.25, 0.75]' 
+    # - pile, pile cc single 
     # path, name = 'EleutherAI/pile', 'all'
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
-    # streaming = False
-    # path, name = 'conceptofmind/pile_cc', 'sep_ds'
-    # path, name = 'EleutherAI/pile', 'hacker_news' 
-    # path, name = 'EleutherAI/pile', 'nih_exporter'  # https://github.com/huggingface/datasets/issues/6144
-    # path, name = 'EleutherAI/pile', 'pubmed' 
-    # path, name = 'EleutherAI/pile', 'uspto' 
     # - 5 subsets of pile using hf data set viewer (parquet)) 
     # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
+    # path, name, data_files = 'conceptofmind/pile_cc', 'sep_ds', [None]
     # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
     # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
     # path, name, data_files = 'parquet', 'pubmed', urls_pubmed
     # path, name, data_files = 'parquet', 'uspto', urls_uspto
     # - 5 subsets of the pile interleaved
-    from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
-    from diversity.data_mixtures import get_doremi_data_mixture_5subsets_of_pile, get_llama_v1_data_mixtures_5subsets_of_pile
-    path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
-    # probabilities, data_mixture_name = [1.0/len(path)] * len(path), f'{[1.0/len(path)] * len(path)=}'
+    # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
+    # from diversity.data_mixtures import get_uniform_data_mixture_5subsets_of_pile, get_doremi_data_mixture_5subsets_of_pile, get_llama_v1_data_mixtures_5subsets_of_pile
+    # path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
+    # probabilities, data_mixture_name = get_uniform_data_mixture_5subsets_of_pile()
+    # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
-    probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
-    # not changing
+    # - not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
     run_name = f'{path} div_coeff_{num_batches=} ({today=} ({name=}) {data_mixture_name=} {probabilities=})'
@@ -485,7 +552,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
 
     # -- Get data set
     def my_load_dataset(path, name, data_files=data_files):
-        print(f'{path=} {name=} {streaming=}')
+        print(f'{path=} {name=} {streaming=} {data_files=}')
         if path == 'json' or path == 'bin' or path == 'csv':
             print(f'{data_files_prefix+name=}')
             return load_dataset(path, data_files=data_files_prefix+name, streaming=streaming, split="train").with_format("torch")
@@ -496,27 +563,39 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
             return load_dataset(path, name, streaming=streaming, split="train").with_format("torch")
     # - get data set for real now
     if isinstance(path, str):
-        dataset = my_load_dataset(path, name)
+        dataset = my_load_dataset(path, name, data_files)
     else:
         # -Interleaving datasets
         print('- Interleaving datasets')
         datasets = [my_load_dataset(path, name, data_files).with_format("torch") for path, name, data_files in zip(path, name, data_files)]
-        [print(f'{dataset.description=}') for dataset in datasets]  # print description if available
-        # - make sure all datasets have the same columns to avoid interleave to complain
-        columns_to_remove = [col for dataset in datasets for col in dataset.column_names if col != 'text']
-        columns_to_remove = list(set(columns_to_remove))  # remove duplicates
-        datasets = [dataset.remove_columns(columns_to_remove) for dataset in datasets]
-        # - interleave
-        print(f'{probabilities=}')
+        # datasets = [my_load_dataset(path, name).with_format("torch") for path, name in zip(path, name)]
+        if any('parquet' == p for p in path) or path == 'parquest':  # idk why I need to do this, I checked very carefully and deleted all columns so interleaved data set matched but when doing this with c4 & wikitext it fails but with the parquet it works https://discuss.huggingface.co/t/why-does-deleting-the-columns-before-giving-it-to-interleave-work-but-sometimes-it-does-not-work/50879
+            dataset_descriptions = [dataset.description for dataset in datasets]  # print description if available
+            print(f'{dataset_descriptions=}')
+            # - make sure all datasets have the same columns to avoid interleave to complain
+            all_columns = [col for dataset in datasets for col in dataset.column_names]
+            print(f'{all_columns=}')
+            columns_to_remove = [col for dataset in datasets for col in dataset.column_names if col != 'text']
+            columns_to_remove = list(set(columns_to_remove))  # remove duplicates
+            print(f'{columns_to_remove=}')
+            datasets = [dataset.remove_columns(columns_to_remove) for dataset in datasets]
+            # - interleave
+            print(f'{probabilities=}')
+            dataset_descriptions = [dataset.description for dataset in datasets]  # print description if available
+            print(f'{dataset_descriptions=}')
         dataset = interleave_datasets(datasets, probabilities)
+        # dataset = dataset.remove_columns(columns_to_remove)
+        print(f'{dataset=}')
+        print(f'{dataset.column_names=}')
     print(f'{dataset=}')
     print(f'{type(dataset)=}')
     # datasets.iterable_dataset.IterableDataset
     # datasets.arrow_dataset.Dataset
     # dataset = IterableDataset(dataset) if type(dataset) != IterableDataset else dataset  # to force dataset.take(batch_size) to work in non-streaming mode
-    batch = dataset.take(batch_size)
-    print(f'{next(iter(batch))=}')
-    column_names = next(iter(batch)).keys()
+    raw_text_batch = dataset.take(batch_size) if streaming else dataset.select(range(batch_size))
+    print(f'{raw_text_batch=}')
+    print(f'{next(iter(raw_text_batch))=}')
+    column_names = next(iter(raw_text_batch)).keys()
     print(f'{column_names=}')
 
     # - Prepare functions to tokenize batch
@@ -525,7 +604,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     remove_columns = column_names  # remove all keys that are not tensors to avoid bugs in collate function in task2vec's pytorch data loader
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
-    tokenized_batch = map(batch)
+    tokenized_batch = map(raw_text_batch)
     print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute diversity coefficient
@@ -537,8 +616,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=3, seed=seed, debug=False, shuffle=False)  # (real) hardcoded for debugging
     # - Real run
     # assert not debug, f'Err: {debug=} for real run'
-    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=False)
-    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=True)
+    results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=False)
+    # results: dict = get_diversity_coefficient(dataset, map, probe_network, num_batches=num_batches, seed=seed, debug=debug, shuffle=True)
     # - Log results
     div_coeff, div_coeff_ci = results['div_coeff'], results['div_coeff_ci']
     print(f'{div_coeff=} {div_coeff_ci=}')

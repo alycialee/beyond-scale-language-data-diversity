@@ -35,6 +35,7 @@ reauth
 
 ssh brando9@ampere1.stanford.edu
 ssh brando9@hyperturing1.stanford.edu
+ssh brando9@hyperturing2.stanford.edu
 tmux ls
 
 tmux new -s rand
@@ -65,7 +66,9 @@ tmux new -s rand23
 tmux new -s rand24
 reauth
 
-# - Min setup code for run
+# - Min setup code for ru
+reauth
+
 source $AFS/.bashrc.lfs
 conda activate beyond_scale
 echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
