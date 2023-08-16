@@ -187,6 +187,14 @@ def pdist(embeddings, distance='cosine') -> np.ndarray:
                 distance_matrix[i, j] = distance_fn(e1, e2)
     return distance_matrix
 
+def cross_pdist():
+    """
+    todo
+    
+    ref: https://chat.openai.com/share/a5ca38dc-3393-4cfd-971c-4a29b0c56b63 
+    """
+    pass
+
 def cdist(from_embeddings, to_embeddings, distance='cosine'):
     distance_fn = _DISTANCES[distance]
     distance_matrix = np.zeros([len(from_embeddings), len(to_embeddings)])

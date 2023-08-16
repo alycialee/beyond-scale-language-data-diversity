@@ -132,7 +132,8 @@ def cross_diversity_coefficient(dataset_target,
         losses.append({'loss_target': loss_target, 'loss_source': loss_source})
 
     # - Compute cross diversity coefficient
-    cross_distance_matrix = task_similarity.pdist(embeddings, distance=distance)
+    # todo: embeddings list -> to two seperate lists
+    cross_distance_matrix = task_similarity.cross_pdist(embeddings, distance=distance)
     cross_div_coeff, cross_div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distance_matrix)
 
     # -- Return results
