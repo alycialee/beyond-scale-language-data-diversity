@@ -187,13 +187,27 @@ def pdist(embeddings, distance='cosine') -> np.ndarray:
                 distance_matrix[i, j] = distance_fn(e1, e2)
     return distance_matrix
 
-def cross_pdist():
+
+def cross_pdist(embeddings1, embeddings2, distance='cosine') -> np.ndarray :
     """
-    todo
-    
+    Compute pairwise distance between embeddings1 and embeddings2.
+
     ref: https://chat.openai.com/share/a5ca38dc-3393-4cfd-971c-4a29b0c56b63 
     """
-    pass
+    distance_fn = _DISTANCES[distance]
+    n1 = len(embeddings1)
+    n2 = len(embeddings2)
+    distance_matrix = np.zeros([n1, n2])
+    if distance != 'asymmetric_kl':
+        for i, e1 in enumerate(embeddings1):
+            for j, e2 in enumerate(embeddings2):
+                distance_matrix[i, j] = distance_fn(e1, e2)
+    else:
+        for i, e1 in enumerate(embeddings1):
+            for j, e2 in enumerate(embeddings2):
+                distance_matrix[i, j] = distance_fn(e1, e2)
+    return distance_matrix
+
 
 def cdist(from_embeddings, to_embeddings, distance='cosine'):
     distance_fn = _DISTANCES[distance]

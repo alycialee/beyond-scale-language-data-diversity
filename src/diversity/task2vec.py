@@ -215,7 +215,7 @@ class Task2Vec:
             if classifier_opts.get("break_early", False):
                 break
             logging.info(f"[epoch {epoch}]: " + "\t".join(f"{k}: {v}" for k, v in metrics.avg.items()))
-        print(f'\nfinal loss {step=} {epoch=} of final layer loss {loss.item()} (note we are not recomputing loss after a step so this print statement might be one off)')
+        print(f'\nfinal loss {step=} {epoch=} of final layer loss {loss.item()} (note we are not recomputing loss after a step so this loss printed is larger than it should be/one off)')
         return loss.item()
 
     ### LLM DIV

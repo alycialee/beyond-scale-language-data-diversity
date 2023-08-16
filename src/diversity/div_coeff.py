@@ -99,7 +99,7 @@ def cross_diversity_coefficient(dataset_target,
                           ) -> dict:
     """ """
     # - Compute embedding of target
-    lossses: list[dict] = []
+    losses: list[dict] = []
     embeddings: list[dict] = []
     cross_distances = []
     for batch_num in range(num_batches):
@@ -131,9 +131,11 @@ def cross_diversity_coefficient(dataset_target,
         embeddings.append({'embedding_target': embedding_target, 'embedding_source': embedding_source})
         losses.append({'loss_target': loss_target, 'loss_source': loss_source})
 
+
     # - Compute cross diversity coefficient
-    # todo: embeddings list -> to two seperate lists
-    cross_distance_matrix = task_similarity.cross_pdist(embeddings, distance=distance)
+    embedding_target = [embedding['embedding_target'] for embedding in embeddings]
+    embedding_source = [embedding['embedding_source'] for embedding in embeddings]
+    cross_distance_matrix = task_similarity.cross_pdist(embeddings_target, embeddings_source, distance=distance)
     cross_div_coeff, cross_div_coeff_ci = task_similarity.stats_of_distance_matrix(cross_distance_matrix)
 
     # -- Return results
@@ -414,13 +416,13 @@ def cross_div_test():
     probe_network = probe_network.to(device)
 
     # -- Get data set
-    # path, name = 'c4', 'en'
-    dataset_target = load_dataset("c4", "en", streaming=True, split="train").with_format("torch")
-    raw_text_batch = dataset.take(batch_size)
+    path, name = 'c4', 'en'
+    dataset_target = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset_target.take(batch_size)
     print(f'{next(iter(raw_text_batch))=}')
-    # path, name = "wikitext", 'wikitext-103-v1'
-    dataset_source = load_dataset("wikitext", "wikitext-103-v1", streaming=True, split="train").with_format("torch")
-    raw_text_batch = dataset.take(batch_size)
+    path, name = "wikitext", 'wikitext-103-v1'
+    dataset_source = load_dataset(path, name, streaming=True, split="train").with_format("torch")
+    raw_text_batch = dataset_source.take(batch_size)
     print(f'{next(iter(raw_text_batch))=}')
     column_names = next(iter(raw_text_batch)).keys()
     print(f'{column_names=}')
@@ -450,9 +452,19 @@ def cross_div_test():
     # print(f'{next(iter(data_loader))=}')
 
     # -- Compute diversity coefficient
+    results: dict = cross_diversity_coefficient(dataset_target, dataset_target, map, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
+    cross_div_coeff, cross_div_coeff_ci = results['cross_div_coeff'], results['cross_div_coeff_ci']
+    print(f'{cross_div_coeff=} {cross_div_coeff_ci=}')
+    same_dataset_results = results
+
     results: dict = cross_diversity_coefficient(dataset_target, dataset_source, map, map, probe_network, num_batches=3, verbose=True, debug=True)  # only for debugging
     cross_div_coeff, cross_div_coeff_ci = results['cross_div_coeff'], results['cross_div_coeff_ci']
     print(f'{cross_div_coeff=} {cross_div_coeff_ci=}')
+    different_dataset_results = results
+    
+    print('Test: same data set cross div, so this value should be smaller than different')
+    print(f'{same_dataset_results=}')
+    print(f'{different_dataset_results=}')
 
     # -- Save results or not
     save_results = True
@@ -654,7 +666,8 @@ if __name__ == '__main__':
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
     # test_diversity_coefficient()
+    cross_div_test()
     # test_interleaved_data_set_2_data_loader()
-    experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
+    # experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took in seconds, minutes, hours, days
     print(f'Time it took to run {__file__}: {time.time() - time_start} seconds, {(time.time() - time_start)/60} minutes, {(time.time() - time_start)/60/60} hours, {(time.time() - time_start)/60/60/24} days\a')
