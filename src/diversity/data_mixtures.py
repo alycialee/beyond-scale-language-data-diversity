@@ -68,12 +68,17 @@ def get_doremi_data_mixture_5subsets_of_pile(name: list) -> tuple[list[float], s
 
     Decisions:
     - easy, used exact values from doremi paper
-
-    ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto']
     """
     # hardcoded dictionary with doremi mixtures 
+    # mix_doremi = {
+    #     'sep_ds': 0.6057, # concept of mind (pile-cc) used originally 
+    #     'hacker_news': 0.0134, 
+    #     'nih_exporter': 0.0063,
+    #     'pubmed': 0.0113, 
+    #     'uspto': 0.0036
+    # }
     mix_doremi = {
-        'sep_ds': 0.6057,  
+        None: 0.6057,  # other pile cc 
         'hacker_news': 0.0134, 
         'nih_exporter': 0.0063,
         'pubmed': 0.0113, 

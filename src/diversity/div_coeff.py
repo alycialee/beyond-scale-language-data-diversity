@@ -478,6 +478,39 @@ def cross_div_test():
         results = {key: str(value) for key, value in results.items()}
         with open(output_dir / f'results{today}.json', 'w') as f:
             json.dump(results, f, indent=4)
+            
+def test_eos_pad():
+    from datasets import load_dataset
+    import torch
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+    raw_text_batch = 'a'
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    # print(f'{tokenizer.eos_token=}')
+    # print(f'{tokenizer.eos_token_id=}')
+    # print(f'{tokenizer.pad_token=}')
+    # print(f'{tokenizer.pad_token_id=}')
+
+    # print(f'{raw_text_batch=}')
+    # tokenize_batch = tokenizer(raw_text_batch, padding="max_length", max_length=5, truncation=True, return_tensors="pt")
+    # print(f'{tokenize_batch=}')
+
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    probe_network = probe_network.to(device)
+
+    print(f'{tokenizer.eos_token=}')
+    print(f'{tokenizer.eos_token_id=}')
+    print(f'{tokenizer.pad_token=}')
+    print(f'{tokenizer.pad_token_id=}')
+
+    print(f'{raw_text_batch=}')
+    tokenize_batch = tokenizer(raw_text_batch, padding="max_length", max_length=5, truncation=True, return_tensors="pt")
+    print(f'{tokenize_batch=}')
+    print('Done')
 
 # -- Experiments
 
@@ -501,6 +534,9 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     streaming = True
     data_files = [None]
     seed = 0
+    split = 'train'
+    # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()  # put to load_dataset( ..., token=token)
+
     # -- Setup wandb
     import wandb
     # - Dryrun
@@ -508,14 +544,16 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
 
     # - Online (real experiment)
-    mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
+    # mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
     # - c4 wt single
-    # path, name = 'c4', 'en'
+    path, name = 'c4', 'en'
     # path, name = "wikitext", 'wikitext-103-v1'
-    path, name = 'Skylion007/openwebtext', None
+    # path, name = 'Skylion007/openwebtext', None
+    # path, name = 'togethercomputer/RedPajama-Data-1T', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
+    # https://huggingface.co/datasets/cerebras/SlimPajama-627B
     # - c4 wt mix
-    path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
-    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
+    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
@@ -526,6 +564,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - 5 subsets of pile using hf data set viewer (parquet)) 
     # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
     # path, name, data_files = 'conceptofmind/pile_cc', 'sep_ds', [None]
+    # path, name, data_files, split = 'suolyer/pile_pile-cc', None, [None], 'validation'  # https://huggingface.co/datasets/suolyer/pile_pile-cc
+    # path, name, data_files, split = 'brando/pile_cc', None, [None], 'validation'  # https://huggingface.co/datasets/brando/pile_cc/tree/main
     # path, name, data_files = 'parquet', 'hacker_news', urls_hacker_news
     # path, name, data_files = 'parquet', 'nih_exporter', urls_nih_exporter
     # path, name, data_files = 'parquet', 'pubmed', urls_pubmed
@@ -533,9 +573,10 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - 5 subsets of the pile interleaved
     # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
     # from diversity.data_mixtures import get_uniform_data_mixture_5subsets_of_pile, get_doremi_data_mixture_5subsets_of_pile, get_llama_v1_data_mixtures_5subsets_of_pile
-    # path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
-    # probabilities, data_mixture_name = get_uniform_data_mixture_5subsets_of_pile()
-    # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
+    # path, name, data_files, split = ['suolyer/pile_pile-cc'] + ['parquet'] * 4, [None] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto], ['validation'] + ['train'] * 4
+    # ## path, name, data_files = ['conceptofmind/pile_cc'] + ['parquet'] * 4, ['sep_ds'] + ['hacker_news', 'nih_exporter', 'pubmed', 'uspto'], [None] + [urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto]
+    # # probabilities, data_mixture_name = get_uniform_data_mixture_5subsets_of_pile()
+    # # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
     # - not changing
     batch_size = 512
@@ -557,39 +598,98 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     import torch
     from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
-    probe_network = probe_network.to(device)
+    # tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    # if tokenizer.pad_token_id is None:
+    #     tokenizer.pad_token = tokenizer.eos_token
+    # probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
+    # device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+    # probe_network = probe_network.to(device)
+
+    from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
+    torch_dtype = torch.bfloat16
+    torch_dtype = torch.float32
+    pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
+    bf16=torch.cuda.get_device_capability(torch.cuda.current_device())[0] >= 8,  # if >= 8 ==> brain float 16 available or set to True if you always want fp32
+    model = AutoModelForCausalLM.from_pretrained(
+        pretrained_model_name_or_path,
+        # quantization_config=quantization_config,
+        # device_map=device_map,  # device_map = None  https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/examples/scripts/sft_trainer.py#L82
+        trust_remote_code=True,
+        torch_dtype=torch_dtype,
+        use_auth_token=True,
+    )
+    print(f'{pretrained_model_name_or_path=}')
+    # # https://github.com/artidoro/qlora/blob/7f4e95a68dc076bea9b3a413d2b512eca6d004e5/qlora.py#L347C13-L347C13
+    # tokenizer = AutoTokenizer.from_pretrained(
+    #     pretrained_model_name_or_path,
+    #     # cache_dir=args.cache_dir,
+    #     padding_side="right",
+    #     use_fast=False, # Fast tokenizer giving issues.
+    #     # tokenizer_type='llama' if 'llama' in args.model_name_or_path else None, # Needed for HF name change
+    #     # tokenizer_type='llama',
+    #     trust_remote_code=True,
+    #     use_auth_token=True,
+    # )
+
+    # from transformers import AutoTokenizer
+    # import transformers
+    # import torch
+
+    # model = "meta-llama/Llama-2-7b-chat-hf"
+
+    # tokenizer = AutoTokenizer.from_pretrained(model)
+    # tokenizer = AutoTokenizer.from_pretrained(model, torch_dtype=torch_dtype)
+    tokenizer = AutoTokenizer.from_pretrained(model, torch_dtype=torch_dtype, use_auth_token=True)
+    # pipeline = transformers.pipeline(
+    #     "text-generation",
+    #     model=model,
+    #     torch_dtype=torch.float16,
+    #     device_map="auto",
+    # )
+
 
     # -- Get data set
-    def my_load_dataset(path, name, data_files=data_files):
-        print(f'{path=} {name=} {streaming=} {data_files=}')
+    def my_load_dataset(path, name, data_files=data_files, split=split):
+        print(f'{path=} {name=} {streaming=} {data_files=}, {split=}')
         if path == 'json' or path == 'bin' or path == 'csv':
             print(f'{data_files_prefix+name=}')
-            return load_dataset(path, data_files=data_files_prefix+name, streaming=streaming, split="train").with_format("torch")
+            return load_dataset(path, data_files=data_files_prefix+name, streaming=streaming, split=split).with_format("torch")
         elif path == 'parquet':
             print(f'{data_files=}')
-            return load_dataset(path, data_files=data_files, streaming=streaming, split="train").with_format("torch")
+            return load_dataset(path, data_files=data_files, streaming=streaming, split=split).with_format("torch")
+        if 'pile_cc' in path or 'pile-cc' in path:
+            return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
         else:
-            return load_dataset(path, name, streaming=streaming, split="train").with_format("torch")
+            return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
     # - get data set for real now
     if isinstance(path, str):
         dataset = my_load_dataset(path, name, data_files)
     else:
         # -Interleaving datasets
         print('- Interleaving datasets')
-        datasets = [my_load_dataset(path, name, data_files).with_format("torch") for path, name, data_files in zip(path, name, data_files)]
+        datasets = [my_load_dataset(path, name, data_files, split=split).with_format("torch") for path, name, data_files, split in zip(path, name, data_files, split)]
         # datasets = [my_load_dataset(path, name).with_format("torch") for path, name in zip(path, name)]
         if any('parquet' == p for p in path) or path == 'parquest':  # idk why I need to do this, I checked very carefully and deleted all columns so interleaved data set matched but when doing this with c4 & wikitext it fails but with the parquet it works https://discuss.huggingface.co/t/why-does-deleting-the-columns-before-giving-it-to-interleave-work-but-sometimes-it-does-not-work/50879
             dataset_descriptions = [dataset.description for dataset in datasets]  # print description if available
             print(f'{dataset_descriptions=}')
             # - make sure all datasets have the same columns to avoid interleave to complain
-            all_columns = [col for dataset in datasets for col in dataset.column_names]
+            # all_columns = [col for dataset in datasets for col in dataset.column_names]
+            # hack due to inconsistent datasets
+            all_columns = [] 
+            for dataset in datasets:
+                if dataset.column_names is None:
+                    all_columns.extend(['text', 'meta'])
+                    assert 'pile_cc' in dataset._info.dataset_name or 'pile-cc' in dataset._info.dataset_name, f'Err: {dataset._info.dataset_name=} {dataset.column_names=} {dataset._info.features=} {dataset._info.splits=} {dataset._info.description=}'
+                    continue
+                for col in dataset.column_names:
+                    # if dataset.column_names is None:
+                    #     all_columns.append(['text', 'meta'])
+                    #     assert 'pile_cc' in dataset._info.dataset_name or 'pile-cc' in dataset._info.dataset_name, f'Err: {dataset._info.dataset_name=} {dataset.column_names=} {dataset._info.features=} {dataset._info.splits=} {dataset._info.description=}'
+                    # else:
+                    all_columns.append(col)
             print(f'{all_columns=}')
-            columns_to_remove = [col for dataset in datasets for col in dataset.column_names if col != 'text']
+            # columns_to_remove = [col for dataset in datasets for col in dataset.column_names if col != 'text']
+            columns_to_remove = [col for col in all_columns if col != 'text']
             columns_to_remove = list(set(columns_to_remove))  # remove duplicates
             print(f'{columns_to_remove=}')
             datasets = [dataset.remove_columns(columns_to_remove) for dataset in datasets]
@@ -603,6 +703,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         print(f'{dataset.column_names=}')
     print(f'{dataset=}')
     print(f'{type(dataset)=}')
+    print(f'{split=}')
     # datasets.iterable_dataset.IterableDataset
     # datasets.arrow_dataset.Dataset
     # dataset = IterableDataset(dataset) if type(dataset) != IterableDataset else dataset  # to force dataset.take(batch_size) to work in non-streaming mode
@@ -667,8 +768,9 @@ if __name__ == '__main__':
     # test_get_batch_from_dataset()
     # alycias_original_colab_code()
     # test_diversity_coefficient()
-    cross_div_test()
+    # cross_div_test()
     # test_interleaved_data_set_2_data_loader()
-    # experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
+    test_eos_pad()
+    experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took in seconds, minutes, hours, days
     print(f'Time it took to run {__file__}: {time.time() - time_start} seconds, {(time.time() - time_start)/60} minutes, {(time.time() - time_start)/60/60} hours, {(time.time() - time_start)/60/60/24} days\a')

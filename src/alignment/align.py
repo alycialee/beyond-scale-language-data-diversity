@@ -1,4 +1,5 @@
 import time
+import datetime
 
 from diversity.task2vec import Task2Vec 
 from diversity import task_similarity
@@ -63,8 +64,9 @@ def alignment_task2vec(dataset_target,
     Note: there is no sense of number of batches here, so num_batches = 1 effectively + if CIs needed need to be with wrt batch examples. 
     """
     # - Get target shuffled data
-    shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
+    shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
     raw_text_batch = shuffled_dataset.take(batch_size)
+
     # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(range(batch_size))
     tokenized_batch = map_target(raw_text_batch)
     if verbose:
@@ -84,9 +86,9 @@ def alignment_task2vec(dataset_target,
     print(f'{loss_target=}\n{embedding_target=}\n') if verbose else None
 
     # - Get source shuffled data
-    shuffled_dataset = dataset_source.shuffle(buffer_size=buffer_size, seed=seed)
-    # raw_text_batch = shuffled_dataset.take(batch_size)
-    raw_text_batch = dataset_target.take(batch_size)
+    shuffled_dataset = dataset_target.shuffle(buffer_size=buffer_size, seed=seed)
+    raw_text_batch = shuffled_dataset.take(batch_size)
+
     tokenized_batch = map_source(raw_text_batch)
     
     # - Get Task2Vec embedding for batch
@@ -380,6 +382,7 @@ def algin_test_cross_div():
     # -- Save results or not
     save_results = True
     if save_results:
+        import datetime
         today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%H_%M')
         output_dir = Path(f'~/data/div_coeff/{today}').expanduser()
         output_dir.mkdir(parents=True, exist_ok=True)
