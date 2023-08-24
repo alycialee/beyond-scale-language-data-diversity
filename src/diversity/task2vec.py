@@ -123,11 +123,18 @@ class Task2Vec:
         # dataset.train()
         if self.mode == "autoregressive":
             loss = None
-            if self.classifier_opts:
-                if "finetune" in self.classifier_opts and self.classifier_opts["finetune"]:
+            print(f'{self.classifier_opts=}')
+            if self.classifier_opts:  # is it something truthy? e.g., dict with something in it?
+                if self.classifier_opts.get('finetune', False):  # finetune only if specified True, else no finetuning if not specified or False. 
+                    epochs = 0
+                    print(f'Warning: classifier_opts doesnt specify finetune or break early, thus no finetuning is being done. See: {self.classifier_opts=} {epochs=}')
                     loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
-            else:
+                else:
+                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+            else:  # self.classifier_opts might be None or {}
                 loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+            print(f'{loss=} (after fine tune, if not done it will be None)')
+            assert loss is not None, f'Err: {loss=}'
             self.compute_fisher(dataset)
             embedding = self.extract_embedding(self.model)
             return embedding, loss
@@ -151,7 +158,7 @@ class Task2Vec:
             return embedding
         
     ### LLM DIV 
-    def _finetune_classifier(self, dataset: Dataset, loader_opts: dict = None, classifier_opts: dict = None, max_samples=None,  epochs = 5, learning_rate = 5e-5, adam_epsilon = 1e-8):
+    def _finetune_classifier(self, dataset: Dataset, loader_opts: dict = None, classifier_opts: dict = None, max_samples=None, epochs = 5, learning_rate = 5e-5, adam_epsilon = 1e-8):
         """Fits the last layer of the HuggingFace transformer probe network."""
         logging.info("Finetune classifier...")
         if loader_opts is None:
@@ -164,7 +171,8 @@ class Task2Vec:
         device = next(self.model.parameters()).device
         print("MODEL DEVICE: ", device)
         
-        num_examples = int(classifier_opts.get("task_batch_size", 512) / loader_opts.get('batch_size', 8))
+        # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
+        num_examples = len(list(data_loader))  # not ideal but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
         n_batches = num_examples
         
         optimizer_grouped_parameters = [
@@ -176,16 +184,15 @@ class Task2Vec:
         
         # Train!
         logging.info("***** Running training *****")
-        logging.info("  Num examples = %d", num_examples)
+        # logging.info("  Num examples = %d", num_examples)
         logging.info("  Num Epochs = %d", epochs)
         logging.info("  Batch size = %d", loader_opts.get('batch_size', 8))
         
         train_iterator = trange(classifier_opts.get("epochs", epochs), desc="Epoch", leave=False)
         set_seed(classifier_opts.get("seed", 42))  # Added here for reproductibility (even between python 2 and 3)
-        epoch = 0
         
         self.model.train()
-        for _ in train_iterator:
+        for epoch in train_iterator:
             metrics = AverageMeter()
             epoch_iterator = tqdm(data_loader, desc="Iteration", total=n_batches, leave=False)
             for step, batch in enumerate(epoch_iterator):
@@ -194,11 +201,13 @@ class Task2Vec:
                         'attention_mask': batch['attention_mask'].to(device)}
                 logits = self.model(**inputs, labels=inputs["input_ids"]).logits
                 loss = self.loss_fn(logits, inputs["input_ids"], ignore_index=50256)
+                print(f'\nInitial loss {loss.item()} ({step=} {epoch=})') if step == 0 else None
                 error = get_error(logits, inputs['input_ids'], ignore_index=50256)
                 loss.backward()
                 optimizer.step()
                 
                 metrics.update(n=batch['input_ids'].shape[0], loss=loss.item(), error=error)
+                epoch_iterator.update(1)
                 
                 if classifier_opts.get("break_early", False):
                     print("----> breaking early")
@@ -206,7 +215,7 @@ class Task2Vec:
             if classifier_opts.get("break_early", False):
                 break
             logging.info(f"[epoch {epoch}]: " + "\t".join(f"{k}: {v}" for k, v in metrics.avg.items()))
-        print(f'\nfinal loss after fitting final layer {loss=}')
+        print(f'\nfinal loss {step=} {epoch=} of final layer loss {loss.item()} (note we are not recomputing loss after a step so this loss printed is larger than it should be/one off)')
         return loss.item()
 
     ### LLM DIV
@@ -220,9 +229,12 @@ class Task2Vec:
         data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
                                  num_workers=loader_opts.get('num_workers', 0), drop_last=False)
         device = get_device(self.model)
-        n_batches = int(self.classifier_opts.get("task_batch_size", 512) / loader_opts.get('batch_size', 8))
-        logging.info("Computing Fisher...")
 
+        # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
+        num_examples = len(list(data_loader))  # not idea but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
+        n_batches = num_examples
+
+        logging.info("Computing Fisher...")
         for p in self.model.parameters():
             p.grad2_acc = torch.zeros_like(p.data)
             p.grad_counter = 0

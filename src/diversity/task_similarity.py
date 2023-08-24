@@ -187,6 +187,28 @@ def pdist(embeddings, distance='cosine') -> np.ndarray:
                 distance_matrix[i, j] = distance_fn(e1, e2)
     return distance_matrix
 
+
+def cross_pdist(embeddings1, embeddings2, distance='cosine') -> np.ndarray :
+    """
+    Compute pairwise distance between embeddings1 and embeddings2.
+
+    ref: https://chat.openai.com/share/a5ca38dc-3393-4cfd-971c-4a29b0c56b63 
+    """
+    distance_fn = _DISTANCES[distance]
+    n1 = len(embeddings1)
+    n2 = len(embeddings2)
+    distance_matrix = np.zeros([n1, n2])
+    if distance != 'asymmetric_kl':
+        for i, e1 in enumerate(embeddings1):
+            for j, e2 in enumerate(embeddings2):
+                distance_matrix[i, j] = distance_fn(e1, e2)
+    else:
+        for i, e1 in enumerate(embeddings1):
+            for j, e2 in enumerate(embeddings2):
+                distance_matrix[i, j] = distance_fn(e1, e2)
+    return distance_matrix
+
+
 def cdist(from_embeddings, to_embeddings, distance='cosine'):
     distance_fn = _DISTANCES[distance]
     distance_matrix = np.zeros([len(from_embeddings), len(to_embeddings)])
@@ -321,7 +343,8 @@ def plot_multi_distance_matrix_from_distance_matrix_list(distance_matrix_lst, ti
 def stats_of_distance_matrix(distance_matrix: np.ndarray,
                              remove_diagonal: bool = True,
                              variance_type: str = 'ci_0.95',
-                             get_total: bool = False) -> tuple[float, float]:
+                             get_total: bool = False,
+                             ) -> tuple[float, float]:
     if remove_diagonal:
         # - remove diagonal: ref https://stackoverflow.com/questions/46736258/deleting-diagonal-elements-of-a-numpy-array
         triu: np.ndarray = np.triu(distance_matrix)
@@ -354,6 +377,13 @@ def stats_of_distance_matrix(distance_matrix: np.ndarray,
         return mu, var, total
     else:
         return mu, var
+
+def stats_cross_distance_matrix(distance_matrix: np.ndarray,
+                                remove_diagonal: bool = False,
+                                variance_type: str = 'ci_0.95',
+                                get_total: bool = False,
+                                ) -> tuple[float, float]:
+    return stats_of_distance_matrix(distance_matrix, remove_diagonal=remove_diagonal, variance_type=variance_type, get_total=get_total)
 
 def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt

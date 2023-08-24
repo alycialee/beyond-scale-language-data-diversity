@@ -57,6 +57,8 @@ setup(
         'transformers',
         'datasets',
 
+        'zstandard',  # needed for eval of all the pile
+
         # 'trl',
         # 'peft',
 
