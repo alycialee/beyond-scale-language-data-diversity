@@ -69,6 +69,7 @@ reauth
 # - Min setup code for ru
 reauth
 
+
 source $AFS/.bashrc.lfs
 conda activate beyond_scale
 echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES

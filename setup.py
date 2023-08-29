@@ -59,6 +59,8 @@ setup(
 
         'zstandard',  # needed for eval of all the pile
 
+        'sentencepiece', # needed llama2 tokenizer
+
         # 'trl',
         # 'peft',
 

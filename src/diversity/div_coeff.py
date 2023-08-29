@@ -27,7 +27,8 @@ def get_diversity_coefficient(dataset,
                             batch_size: int = 512,
                             num_batches: int = 600, 
                             seed: int = 0, 
-                            buffer_size: int = 500_000, 
+                            buffer_size: int = 500_000,
+                            streaming: bool = True,
                             distance = 'cosine',
                             verbose: bool = False,
                             debug: bool = False,
@@ -48,8 +49,9 @@ def get_diversity_coefficient(dataset,
         print(f'--> {batch_num=}\n')
         # - Get batch
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
-        raw_text_batch = shuffled_dataset.take(batch_size)
+        # raw_text_batch = shuffled_dataset.take(batch_size)
         # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(range(batch_size))
+        raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
         tokenized_batch = map(raw_text_batch)
         if verbose:
             print(f'{raw_text_batch=}')
@@ -527,6 +529,9 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     - div c4+wt, respect gpt3 weights
     then repeat all with pt (no ft)
     """
+    import torch
+    from datasets import load_dataset 
+    from datasets.iterable_dataset import IterableDataset
     import random
     from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
     probabilities = []
@@ -541,26 +546,28 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     import wandb
     # - Dryrun
     # mode = 'dryrun'; num_batches = 3
-    mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
+    # mode = 'dryrun'; num_batches = 3; seed = random.randint(0, 2**32 - 1)
+    mode = 'dryrun'; num_batches = 3; seed = 0
 
     # - Online (real experiment)
+    # mode = 'online'; num_batches = 600
     # mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
-    # - c4 wt single
+    mode = 'online'; num_batches = 600; seed = 0
+    # - c4 wt singl
     path, name = 'c4', 'en'
-    # path, name = "wikitext", 'wikitext-103-v1'
+    path, name = "wikitext", 'wikitext-103-v1'
     # path, name = 'Skylion007/openwebtext', None
+    # path, name = 'EleutherAI/pile', 'all'
+    # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # path, name = 'togethercomputer/RedPajama-Data-1T', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
-    # https://huggingface.co/datasets/cerebras/SlimPajama-627B
+    # path, name = 'cerebras/SlimPajama-627B', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
     # - c4 wt mix
     # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
-    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
     # probabilities, data_mixture_name = [0.25, 0.75], '[0.25, 0.75]' 
-    # - pile, pile cc single 
-    # path, name = 'EleutherAI/pile', 'all'
-    # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # - 5 subsets of pile using hf data set viewer (parquet)) 
     # from diversity.pile_subset_urls import urls_hacker_news, urls_nih_exporter, urls_pubmed, urls_uspto
     # path, name, data_files = 'conceptofmind/pile_cc', 'sep_ds', [None]
@@ -578,76 +585,64 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # # probabilities, data_mixture_name = get_uniform_data_mixture_5subsets_of_pile()
     # # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
+    # - probe net
+    # pretrained_model_name_or_path = 'gpt2'
+    pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
     # - not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
-    run_name = f'{path} div_coeff_{num_batches=} ({today=} ({name=}) {data_mixture_name=} {probabilities=})'
+    run_name = f'{path} div_coeff_{num_batches=} ({today=} ({name=}) {data_mixture_name=} {probabilities=} {pretrained_model_name_or_path=})'
     print(f'\n---> {run_name=}\n')
 
     # - Init wandb
     debug: bool = mode == 'dryrun'
     run = wandb.init(mode=mode, project="beyond-scale", name=run_name, save_code=True)
-    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming, 'data_files': data_files, 'seed': seed})
+    wandb.config.update({"num_batches": num_batches, "path": path, "name": name, "today": today, 'probabilities': probabilities, 'batch_size': batch_size, 'debug': debug, 'data_mixture_name': data_mixture_name, 'streaming': streaming, 'data_files': data_files, 'seed': seed, 'pretrained_model_name_or_path': pretrained_model_name_or_path})
     # run.notify_on_failure() # https://community.wandb.ai/t/how-do-i-set-the-wandb-alert-programatically-for-my-current-run/4891
     print(f'{debug=}')
     print(f'{wandb.config=}')
 
     # -- Get probe network
-    from datasets import load_dataset 
-    from datasets.iterable_dataset import IterableDataset
-    import torch
-    from transformers import GPT2Tokenizer, GPT2LMHeadModel
-
-    # tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    # if tokenizer.pad_token_id is None:
-    #     tokenizer.pad_token = tokenizer.eos_token
-    # probe_network = GPT2LMHeadModel.from_pretrained("gpt2")
-    # device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
-    # probe_network = probe_network.to(device)
-
-    from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
-    torch_dtype = torch.bfloat16
-    torch_dtype = torch.float32
-    pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
-    bf16=torch.cuda.get_device_capability(torch.cuda.current_device())[0] >= 8,  # if >= 8 ==> brain float 16 available or set to True if you always want fp32
-    model = AutoModelForCausalLM.from_pretrained(
-        pretrained_model_name_or_path,
-        # quantization_config=quantization_config,
-        # device_map=device_map,  # device_map = None  https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/examples/scripts/sft_trainer.py#L82
-        trust_remote_code=True,
-        torch_dtype=torch_dtype,
-        use_auth_token=True,
-    )
+    # - gpt2
     print(f'{pretrained_model_name_or_path=}')
-    # # https://github.com/artidoro/qlora/blob/7f4e95a68dc076bea9b3a413d2b512eca6d004e5/qlora.py#L347C13-L347C13
-    # tokenizer = AutoTokenizer.from_pretrained(
-    #     pretrained_model_name_or_path,
-    #     # cache_dir=args.cache_dir,
-    #     padding_side="right",
-    #     use_fast=False, # Fast tokenizer giving issues.
-    #     # tokenizer_type='llama' if 'llama' in args.model_name_or_path else None, # Needed for HF name change
-    #     # tokenizer_type='llama',
-    #     trust_remote_code=True,
-    #     use_auth_token=True,
-    # )
-
-    # from transformers import AutoTokenizer
-    # import transformers
-    # import torch
-
-    # model = "meta-llama/Llama-2-7b-chat-hf"
-
-    # tokenizer = AutoTokenizer.from_pretrained(model)
-    # tokenizer = AutoTokenizer.from_pretrained(model, torch_dtype=torch_dtype)
-    tokenizer = AutoTokenizer.from_pretrained(model, torch_dtype=torch_dtype, use_auth_token=True)
-    # pipeline = transformers.pipeline(
-    #     "text-generation",
-    #     model=model,
-    #     torch_dtype=torch.float16,
-    #     device_map="auto",
-    # )
-
-
+    if pretrained_model_name_or_path == 'gpt2':
+        from transformers import GPT2Tokenizer, GPT2LMHeadModel
+        tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_name_or_path)
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        probe_network = GPT2LMHeadModel.from_pretrained(pretrained_model_name_or_path)
+        device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+        probe_network = probe_network.to(device)
+    elif 'Llama-2' in pretrained_model_name_or_path:
+        # - llama2
+        from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
+        # torch_dtype = torch.bfloat16
+        torch_dtype = torch.float32
+        bf16 = torch.cuda.get_device_capability(torch.cuda.current_device())[0] >= 8,  # if >= 8 ==> brain float 16 available or set to True if you always want fp32
+        probe_network = AutoModelForCausalLM.from_pretrained(
+            pretrained_model_name_or_path,
+            # quantization_config=quantization_config,
+            # device_map=device_map,  # device_map = None  https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/examples/scripts/sft_trainer.py#L82
+            trust_remote_code=True,
+            torch_dtype=torch_dtype,
+            use_auth_token=True,
+        )
+        device = torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu")
+        probe_network = probe_network.to(device)
+        # https://github.com/artidoro/qlora/blob/7f4e95a68dc076bea9b3a413d2b512eca6d004e5/qlora.py#L347C13-L347C13
+        tokenizer = AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path,
+            # cache_dir=args.cache_dir,
+            padding_side="right",
+            use_fast=False, # Fast tokenizer giving issues.
+            # tokenizer_type='llama' if 'llama' in args.model_name_or_path else None, # Needed for HF name change
+            # tokenizer_type='llama',
+            trust_remote_code=True,
+            use_auth_token=True,
+        )
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token = tokenizer.eos_token
+    print(f'{device=}')
     # -- Get data set
     def my_load_dataset(path, name, data_files=data_files, split=split):
         print(f'{path=} {name=} {streaming=} {data_files=}, {split=}')
@@ -770,7 +765,7 @@ if __name__ == '__main__':
     # test_diversity_coefficient()
     # cross_div_test()
     # test_interleaved_data_set_2_data_loader()
-    test_eos_pad()
+    # test_eos_pad()
     experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_with_domain_weights()
     # -- End tests, report how long it took in seconds, minutes, hours, days
     print(f'Time it took to run {__file__}: {time.time() - time_start} seconds, {(time.time() - time_start)/60} minutes, {(time.time() - time_start)/60/60} hours, {(time.time() - time_start)/60/60/24} days\a')
