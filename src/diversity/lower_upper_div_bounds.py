@@ -21,6 +21,10 @@ or maximum diversity dataset would consist of random sequences of all possible t
 to semantics, formatting, etc. The upper bound of the diversity coefficient was therefore measured on a synthetic
 dataset with an equal probability of occurrence assigned to
 all tokens in the GPT-2 tokenizer vocabulary.
+
+refs: 
+  - https://claude.ai/chat/f53bcb39-2c54-4e02-a831-87c6cf7f0d80
+  - https://chat.openai.com/c/56296331-190f-4572-868c-12d510d19c69
 """
 
 from transformers import GPT2Tokenizer
