@@ -534,12 +534,17 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     from datasets.iterable_dataset import IterableDataset
     import random
     from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
+    from diversity.lower_upper_div_bounds import get_lb_ds
+    from diversity.lower_upper_div_bounds import get_ub_ds
+    print(f'{get_lb_ds=}')
+    print(f'{get_ub_ds=}')
     probabilities = []
     data_mixture_name = None
     streaming = True
     data_files = [None]
     seed = 0
     split = 'train'
+    max_length = 128
     # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()  # put to load_dataset( ..., token=token)
 
     # -- Setup wandb
@@ -552,7 +557,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # - Online (real experiment)
     # mode = 'online'; num_batches = 600
     # mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
-    mode = 'online'; num_batches = 600; seed = 0
+    # mode = 'online'; num_batches = 600; seed = 0
     # - c4 wt singl
     path, name = 'c4', 'en'
     path, name = "wikitext", 'wikitext-103-v1'
@@ -561,6 +566,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # path, name = 'togethercomputer/RedPajama-Data-1T', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
     # path, name = 'cerebras/SlimPajama-627B', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
+    path, name = "lb", 'lb'
+    path, name = "ub", 'ub'
     # - c4 wt mix
     # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
     probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
@@ -652,9 +659,16 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         elif path == 'parquet':
             print(f'{data_files=}')
             return load_dataset(path, data_files=data_files, streaming=streaming, split=split).with_format("torch")
-        if 'pile_cc' in path or 'pile-cc' in path:
+        elif 'pile_cc' in path or 'pile-cc' in path:
             return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
+        elif name == 'lb':
+            ds = get_lb_ds(tokenizer, num_batches * batch_size, max_length)
+            return ds
+        elif name == 'ub':
+            ds = get_ub_ds(tokenizer, num_batches * batch_size, max_length)
+            return ds
         else:
+            print(f'{path=} {name=} {data_files=} {split=} with_format is torch')
             return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
     # - get data set for real now
     if isinstance(path, str):
@@ -710,7 +724,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
 
     # - Prepare functions to tokenize batch
     def preprocess(examples):
-        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+        return tokenizer(examples["text"], padding="max_length", max_length=max_length, truncation=True, return_tensors="pt")
     remove_columns = column_names  # remove all keys that are not tensors to avoid bugs in collate function in task2vec's pytorch data loader
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
