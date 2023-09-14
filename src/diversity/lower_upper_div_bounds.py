@@ -23,7 +23,6 @@ dataset with an equal probability of occurrence assigned to
 all tokens in the GPT-2 tokenizer vocabulary.
 
 refs: 
-  - colab: https://colab.research.google.com/drive/1YHMSnvevy23FJ80hGXcPpD0l0_LlXfxY#scrollTo=sjgFdf-ls8rp (due to working in madrid)
   - https://claude.ai/chat/f53bcb39-2c54-4e02-a831-87c6cf7f0d80, https://claude.ai/chat/7bc1c10d-ee24-4add-b8a8-6047408e0c5b
   - https://chat.openai.com/c/56296331-190f-4572-868c-12d510d19c69
   - https://github.com/brando90/beyond-scale-language-data-diversity/blob/main/src/diversity/_lower_upper_div_bounds.py
@@ -135,28 +134,19 @@ def test_lb_ds_looping_with_div_coeff_map_code():
     # Get final ub seq - Pad sequence to max length
     num_pads = max_length - len(input_ids)
     input_ids.extend([tokenizer.pad_token_id] * num_pads)
-    return {"input_ids": input_ids}
-    #return input_ids
+    # return {"input_ids": input_ids}
+    return input_ids
 
   # Generate dataset with num_batches * batch_size = 1000 samples/sequences
   num_sequences = num_batches * batch_size  # total number of samples/sequences for the lb/ub data set
-  samples: list[list] = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set, list of sequences/samples
-  dataset = Dataset.from_dict({"input_ids": samples})
-  # dataset = Dataset.from_dict(samples)
+  
+  samples: list[list] = [gen_lb_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set, list of sequences/samples
+  dataset = Dataset.from_dict({"input_ids": samples})  # converts the only elements in the sequences into rows in the hf dataset with column name input_ids
   print(f'{dataset=}')
   print(f'{type(dataset)=}')
   ## print(f"{dataset['input_ids']=}")  # memory issues in colab
 
-  #samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
-  #dataset = Dataset.from_dict({"input_ids": samples})
-  #dataset = Dataset.from_dict(samples)
-  #print(f'{samples=}')
-  #print(f'{dataset=}')
-
-  # my_map = map(lambda x: x, batch)
-
-  # once we have the datasets, we will sample a set samples (a batch of size batch_size)
-  # then we will use the map function, this is the function that I don't want to fuck up our code
+  # once we have the datasets as a table with columns as the samples/seqs and rows as the exact sample, sample a batch samples (a batch of size batch_size)
   # --
   for batch_sum in range(num_batches):
     shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
@@ -165,7 +155,23 @@ def test_lb_ds_looping_with_div_coeff_map_code():
     # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
     # tokenized_batch = map(raw_text_batch) will this being the identity work?
     tokenized_batch = map(lambda x: x, batch) #  will this being the identity work?
-  print('Success!')
+
+  samples: list[list] = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set, list of sequences/samples
+  dataset = Dataset.from_dict({"input_ids": samples})  # converts the only elements in the sequences into rows in the hf dataset with column name input_ids
+  print(f'{dataset=}')
+  print(f'{type(dataset)=}')
+  ## print(f"{dataset['input_ids']=}")  # memory issues in colab
+
+  # once we have the datasets as a table with columns as the samples/seqs and rows as the exact sample, sample a batch samples (a batch of size batch_size)
+  # --
+  for batch_sum in range(num_batches):
+    shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
+    # sample batch of samples/rows from data set
+    batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
+    # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+    # tokenized_batch = map(raw_text_batch) will this being the identity work?
+    tokenized_batch = map(lambda x: x, batch) #  will this being the identity work?
 
 if __name__ == '__main__':
   test_lb_ds_looping_with_div_coeff_map_code()
+  print('Success!\a')
