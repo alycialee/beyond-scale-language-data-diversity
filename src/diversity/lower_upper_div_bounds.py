@@ -30,7 +30,7 @@ refs:
 
 # -- Test, examples, etc.
 
-def test_lb_ds_looping_with_div_coeff_map_code()
+def test_lb_ds_looping_with_div_coeff_map_code():
   import torch
   from datasets import Dataset
   from transformers import AutoTokenizer
