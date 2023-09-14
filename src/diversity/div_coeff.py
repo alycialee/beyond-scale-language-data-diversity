@@ -51,11 +51,13 @@ def get_diversity_coefficient(dataset,
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
         # raw_text_batch = shuffled_dataset.take(batch_size)
         # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(range(batch_size))
-        raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
-        tokenized_batch = map(raw_text_batch)
+        # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+        # tokenized_batch = map(raw_text_batch)
+        batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
         if verbose:
-            print(f'{raw_text_batch=}')
-            print(f'{tokenized_batch=}')
+            # print(f'{raw_text_batch=}')
+            # print(f'{tokenized_batch=}')
+            print(f'{batch=}')
             # time_start = time.time()
             # print(f'{next(iter(raw_text_batch))=}')
             # print(f'{next(iter(tokenized_batch))=}')
@@ -566,8 +568,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # path, name = 'togethercomputer/RedPajama-Data-1T', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
     # path, name = 'cerebras/SlimPajama-627B', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
-    path, name = "lb", 'lb'
-    path, name = "ub", 'ub'
+    path, name, streaming = "lb", 'lb', False
+    path, name, streaming = "ub", 'ub', False
     # - c4 wt mix
     # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
     probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
@@ -728,6 +730,10 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     remove_columns = column_names  # remove all keys that are not tensors to avoid bugs in collate function in task2vec's pytorch data loader
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    if name == 'lb' or name == 'ub':
+        # map = map(lambda x: x, batch)  # map(fun, iter)
+        # map = batch.map(lambda x: x) # map(fun, iter)
+        map = lambda batch: batch.map(lambda x: x)  # def batch: map(fun, iter)
     tokenized_batch = map(raw_text_batch)
     print(f'{next(iter(tokenized_batch))=}')
 
