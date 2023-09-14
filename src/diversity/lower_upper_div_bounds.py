@@ -26,7 +26,11 @@ refs:
   - https://claude.ai/chat/f53bcb39-2c54-4e02-a831-87c6cf7f0d80, https://claude.ai/chat/7bc1c10d-ee24-4add-b8a8-6047408e0c5b
   - https://chat.openai.com/c/56296331-190f-4572-868c-12d510d19c69
   - https://github.com/brando90/beyond-scale-language-data-diversity/blob/main/src/diversity/_lower_upper_div_bounds.py
+  - colab: https://colab.research.google.com/drive/1YHMSnvevy23FJ80hGXcPpD0l0_LlXfxY#scrollTo=sjgFdf-ls8rp
 """
+buffer_size: int = 500_000
+
+import random
 
 # -- Test, examples, etc.
 
@@ -34,6 +38,11 @@ def test_lb_ds_looping_with_div_coeff_map_code():
   import torch
   from datasets import Dataset
   from transformers import AutoTokenizer
+  batch_size = 512
+  num_batches = 600
+  streaming = False
+  seed = 0
+  shuffle = False
 
   # Load tokenizer
   tokenizer = AutoTokenizer.from_pretrained("gpt2")  # or other tokenizer
@@ -92,7 +101,6 @@ def test_lb_ds_looping_with_div_coeff_map_code():
       - generate either eos or any eos token token with equal prob
       - once eos is generate, pad the remaining seq to max length with eos's pad token
     """
-    streaming = False
     # ~ return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     # Get EOS token 
     eos_token_id = tokenizer.eos_token_id
@@ -115,7 +123,7 @@ def test_lb_ds_looping_with_div_coeff_map_code():
       # Sample any token ID from 0 to vocab_size-1  # this is the uniform sampling 0.5, 0.5 any token
       token_id = random.randint(0, vocab_size-1)
       input_ids.append(token_id)
-      if token_id == eos_token:
+      if token_id == eos_token_id:
         # If EOS, end sequence generation
         input_ids.append(token_id)  
         break
@@ -127,9 +135,9 @@ def test_lb_ds_looping_with_div_coeff_map_code():
 
   # Generate dataset with num_batches * batch_size = 1000 samples/sequences
   num_sequences = num_batches * batch_size  # total number of samples/sequences for the lb/ub data set
-  lb_samples = [gen_lb_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  samples = [gen_lb_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
   dataset = Dataset.from_dict({"input_ids": samples})
-  lb_samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
   dataset = Dataset.from_dict({"input_ids": samples})
 
   map = tokenized_batch = map(lambda x: x, batch)
