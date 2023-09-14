@@ -84,16 +84,52 @@ def test_lb_ds_looping_with_div_coeff_map_code()
       # Get final lb seq - Pad sequence to max length
       num_pads = max_length - len(input_ids)
       input_ids.extend([tokenizer.pad_token_id]*num_pads)
-      return torch.tensor(input_ids)
-    
-    # Generate random input IDs
-    input_ids = torch.randint(0, len(tokenizer), (max_length,))  
-    # Return sequence as dictionary 
+      return {"input_ids": input_ids}
+
+  def gen_ub_seq(max_length = 128):
+    """
+    Algorithm to generate lower bound div data set:
+      - generate either eos or any eos token token with equal prob
+      - once eos is generate, pad the remaining seq to max length with eos's pad token
+    """
+    # ~ return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+    # Get EOS token 
+    eos_token_id = tokenizer.eos_token_id
+
+    # Generate a token id that is not -- EOS (since we want to have lb seq to be either the non token id until eos is sampled, then padding to max length
+    # Get vocabulary size
+    vocab_size = len(tokenizer)
+    # Generate random int between 0 and vocab size
+    random_token_id = random.randint(0, vocab_size - 1)
+    # If random ID is EOS, regenerate until it is not eos
+    while random_token_id == eos_token_id:
+      random_token_id = random.randint(0, vocab_size - 1)
+
+    # Generate ub seq - sequence sample any token uniformly, once eos is gen, pad
+    input_ids = []
+    for i in range(max_length):
+      # First token is always non-EOS
+      if i == 0:
+        input_ids.append(random_token_id)
+      # Sample any token ID from 0 to vocab_size-1  # this is the uniform sampling 0.5, 0.5 any token
+      token_id = random.randint(0, vocab_size-1)
+      input_ids.append(token_id)
+      if token_id == eos_token:
+        # If EOS, end sequence generation
+        input_ids.append(token_id)  
+        break
+
+    # Get final ub seq - Pad sequence to max length
+    num_pads = max_length - len(input_ids)
+    input_ids.extend([tokenizer.pad_token_id] * num_pads)
     return {"input_ids": input_ids}
 
   # Generate dataset with num_batches * batch_size = 1000 samples/sequences
-  num_sequences = num_batches * batch_size
-  dataset = Dataset.from_dict({"input_ids": [gen_lb_seq() for i in range(num_sequences)]})
+  num_sequences = num_batches * batch_size  # total number of samples/sequences for the lb/ub data set
+  lb_samples = [gen_lb_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  dataset = Dataset.from_dict({"input_ids": samples})
+  lb_samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  dataset = Dataset.from_dict({"input_ids": samples})
 
 if __name__ == '__main__':
   test_lb_ds_looping_with_div_coeff_map_code()
