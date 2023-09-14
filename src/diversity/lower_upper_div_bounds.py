@@ -132,6 +132,8 @@ def test_lb_ds_looping_with_div_coeff_map_code()
   lb_samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
   dataset = Dataset.from_dict({"input_ids": samples})
 
+  map = tokenized_batch = map(lambda x: x, batch)
+
   # once we have the datasets, we will sample a set samples (a batch of size batch_size)
   # then we will use the map function, this is the function that I don't want to fuck up our code
   # --
