@@ -23,14 +23,16 @@ dataset with an equal probability of occurrence assigned to
 all tokens in the GPT-2 tokenizer vocabulary.
 
 refs: 
+  - colab: https://colab.research.google.com/drive/1YHMSnvevy23FJ80hGXcPpD0l0_LlXfxY#scrollTo=sjgFdf-ls8rp (due to working in madrid)
   - https://claude.ai/chat/f53bcb39-2c54-4e02-a831-87c6cf7f0d80, https://claude.ai/chat/7bc1c10d-ee24-4add-b8a8-6047408e0c5b
   - https://chat.openai.com/c/56296331-190f-4572-868c-12d510d19c69
   - https://github.com/brando90/beyond-scale-language-data-diversity/blob/main/src/diversity/_lower_upper_div_bounds.py
-  - colab: https://colab.research.google.com/drive/1YHMSnvevy23FJ80hGXcPpD0l0_LlXfxY#scrollTo=sjgFdf-ls8rp
 """
 buffer_size: int = 500_000
 
 import random
+import torch
+import sys
 
 # -- Test, examples, etc.
 
@@ -90,10 +92,11 @@ def test_lb_ds_looping_with_div_coeff_map_code():
         else:
           input_ids.append(random_token_id)
 
-      # Get final lb seq - Pad sequence to max length
-      num_pads = max_length - len(input_ids)
-      input_ids.extend([tokenizer.pad_token_id]*num_pads)
-      return {"input_ids": input_ids}
+    # Get final lb seq - Pad sequence to max length
+    num_pads = max_length - len(input_ids)
+    input_ids.extend([tokenizer.pad_token_id] * num_pads)
+    # return {"input_ids": input_ids}
+    return input_ids
 
   def gen_ub_seq(max_length = 128):
     """
@@ -122,36 +125,47 @@ def test_lb_ds_looping_with_div_coeff_map_code():
         input_ids.append(random_token_id)
       # Sample any token ID from 0 to vocab_size-1  # this is the uniform sampling 0.5, 0.5 any token
       token_id = random.randint(0, vocab_size-1)
-      input_ids.append(token_id)
       if token_id == eos_token_id:
         # If EOS, end sequence generation
-        input_ids.append(token_id)  
+        input_ids.append(token_id)
         break
+      else:
+        input_ids.append(token_id)  
 
     # Get final ub seq - Pad sequence to max length
     num_pads = max_length - len(input_ids)
     input_ids.extend([tokenizer.pad_token_id] * num_pads)
     return {"input_ids": input_ids}
+    #return input_ids
 
   # Generate dataset with num_batches * batch_size = 1000 samples/sequences
   num_sequences = num_batches * batch_size  # total number of samples/sequences for the lb/ub data set
-  samples = [gen_lb_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  samples: list[list] = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set, list of sequences/samples
   dataset = Dataset.from_dict({"input_ids": samples})
-  samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
-  dataset = Dataset.from_dict({"input_ids": samples})
+  # dataset = Dataset.from_dict(samples)
+  print(f'{dataset=}')
+  print(f'{type(dataset)=}')
+  ## print(f"{dataset['input_ids']=}")  # memory issues in colab
 
-  map = tokenized_batch = map(lambda x: x, batch)
+  #samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
+  #dataset = Dataset.from_dict({"input_ids": samples})
+  #dataset = Dataset.from_dict(samples)
+  #print(f'{samples=}')
+  #print(f'{dataset=}')
+
+  # my_map = map(lambda x: x, batch)
 
   # once we have the datasets, we will sample a set samples (a batch of size batch_size)
   # then we will use the map function, this is the function that I don't want to fuck up our code
   # --
   for batch_sum in range(num_batches):
     shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
-    # sample batch of text or token ids - usually text, but we will already have the token ids
-    batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+    # sample batch of samples/rows from data set
+    batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
     # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
     # tokenized_batch = map(raw_text_batch) will this being the identity work?
-    tokenized_batch = map(batch) #  will this being the identity work?
+    tokenized_batch = map(lambda x: x, batch) #  will this being the identity work?
+  print('Success!')
 
 if __name__ == '__main__':
   test_lb_ds_looping_with_div_coeff_map_code()
