@@ -92,6 +92,7 @@ def test_lb_ds_looping_with_div_coeff_map_code()
       - generate either eos or any eos token token with equal prob
       - once eos is generate, pad the remaining seq to max length with eos's pad token
     """
+    streaming = False
     # ~ return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
     # Get EOS token 
     eos_token_id = tokenizer.eos_token_id
@@ -130,6 +131,17 @@ def test_lb_ds_looping_with_div_coeff_map_code()
   dataset = Dataset.from_dict({"input_ids": samples})
   lb_samples = [gen_ub_seq() for i in range(num_sequences)]  # generate sequenes/samples for lb/ub data set
   dataset = Dataset.from_dict({"input_ids": samples})
+
+  # once we have the datasets, we will sample a set samples (a batch of size batch_size)
+  # then we will use the map function, this is the function that I don't want to fuck up our code
+  # --
+  for batch_sum in range(num_batches):
+    shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
+    # sample batch of text or token ids - usually text, but we will already have the token ids
+    batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+    # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+    # tokenized_batch = map(raw_text_batch) will this being the identity work?
+    tokenized_batch = map(batch) #  will this being the identity work?
 
 if __name__ == '__main__':
   test_lb_ds_looping_with_div_coeff_map_code()
