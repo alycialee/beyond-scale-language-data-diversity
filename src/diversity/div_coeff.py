@@ -54,6 +54,7 @@ def get_diversity_coefficient(dataset,
         # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
         # tokenized_batch = map(raw_text_batch)
         batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
+        batch = map(batch)
         if verbose:
             # print(f'{raw_text_batch=}')
             # print(f'{tokenized_batch=}')
@@ -65,9 +66,9 @@ def get_diversity_coefficient(dataset,
 
         # - Get Task2Vec embedding for batch
         if not debug:
-            embedding, loss = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(batch)
         else:
-            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(batch, epochs=1)  # only for debugging
         print(f'{loss=}\n{embedding=}\n') if verbose else None
         
         # - Collect results
@@ -733,7 +734,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     if name == 'lb' or name == 'ub':
         # map = map(lambda x: x, batch)  # map(fun, iter)
         # map = batch.map(lambda x: x) # map(fun, iter)
-        map = lambda batch: batch.map(lambda x: x)  # def batch: map(fun, iter)
+        map = lambda batch: batch.map(lambda x: x, batched=True, remove_columns=remove_columns)  # def batch: map(fun, iter)
     tokenized_batch = map(raw_text_batch)
     print(f'{next(iter(tokenized_batch))=}')
 

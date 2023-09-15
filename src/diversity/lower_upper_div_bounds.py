@@ -23,6 +23,7 @@ dataset with an equal probability of occurrence assigned to
 all tokens in the GPT-2 tokenizer vocabulary.
 
 refs: 
+  - colab: https://colab.research.google.com/drive/1YHMSnvevy23FJ80hGXcPpD0l0_LlXfxY#scrollTo=sjgFdf-ls8rp
   - https://claude.ai/chat/f53bcb39-2c54-4e02-a831-87c6cf7f0d80, https://claude.ai/chat/7bc1c10d-ee24-4add-b8a8-6047408e0c5b
   - https://chat.openai.com/c/56296331-190f-4572-868c-12d510d19c69
   - https://github.com/brando90/beyond-scale-language-data-diversity/blob/main/src/diversity/_lower_upper_div_bounds.py
@@ -63,7 +64,7 @@ def gen_lb_seq(tokenizer, max_length: int = 128):
   p_eos = 1/vocab_size  # Probability of EOS (small prob for eos)
   # Generate sequence
   input_ids = []
-  for i in range(max_length):
+  for i in range(max_length-1):
     # First token is always non-EOS
     if i == 0:
       input_ids.append(random_token_id)
@@ -80,6 +81,8 @@ def gen_lb_seq(tokenizer, max_length: int = 128):
   num_pads = max_length - len(input_ids)
   input_ids.extend([tokenizer.pad_token_id] * num_pads)
   # return {"input_ids": input_ids}
+  input_ids = torch.tensor(input_ids)
+  assert not isinstance(input_ids, list)
   return input_ids
 
 def gen_ub_seq(tokenizer, max_length: int = 128):
@@ -103,7 +106,7 @@ def gen_ub_seq(tokenizer, max_length: int = 128):
 
   # Generate ub seq - sequence sample any token uniformly, once eos is gen, pad
   input_ids = []
-  for i in range(max_length):
+  for i in range(max_length-1):
     # First token is always non-EOS
     if i == 0:
       input_ids.append(random_token_id)
@@ -119,7 +122,10 @@ def gen_ub_seq(tokenizer, max_length: int = 128):
   # Get final ub seq - Pad sequence to max length
   num_pads = max_length - len(input_ids)
   input_ids.extend([tokenizer.pad_token_id] * num_pads)
+  # return torch.tensor(input_ids)
   # return {"input_ids": input_ids}
+  input_ids = torch.tensor(input_ids)
+  assert not isinstance(input_ids, list)
   return input_ids
 
 def get_lb_ds(tokenizer, num_sequences: int = 307200, max_length: int = 128):
@@ -188,7 +194,9 @@ def test_lb_ds_looping_with_div_coeff_map_code():
     batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
     # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
     # tokenized_batch = map(raw_text_batch) will this being the identity work?
-    tokenized_batch = map(lambda x: x, batch) #  will this being the identity work?
+    # tokenized_batch = map(lambda x: x, batch) #  will this being the identity work?
+    # batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
+    batch = map(batch)
 
 if __name__ == '__main__':
   test_lb_ds_looping_with_div_coeff_map_code()
