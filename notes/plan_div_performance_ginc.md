@@ -1,5 +1,7 @@
 # Experiment Plan: The Effect of Diversity on Downstream Performance 
 
+original plan: https://github.com/brando90/explaining-emergence-icl-in-fms-with-diversity/blob/main/notes/experiment%20plans/_plan_div_performance_ginc.md
+
 ## Goal
 
 Essential Goal: Does pre-training on a highly diverse data set lead to high performance on pre-training evaluation sets?
