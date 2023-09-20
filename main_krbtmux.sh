@@ -69,9 +69,9 @@ reauth
 # - Min setup code for ru
 reauth
 
-
 source $AFS/.bashrc.lfs
 conda activate beyond_scale
+CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=id,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
 echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
 
 # -- Run

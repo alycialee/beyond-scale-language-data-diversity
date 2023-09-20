@@ -558,7 +558,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     mode = 'dryrun'; num_batches = 3; seed = 0
 
     # - Online (real experiment)
-    # mode = 'online'; num_batches = 600
+    mode = 'online'; num_batches = 600
     # mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
     # mode = 'online'; num_batches = 600; seed = 0
     # - c4 wt singl
@@ -573,7 +573,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     path, name, streaming = "ub", 'ub', False
     # - c4 wt mix
     # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
-    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
@@ -596,8 +596,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
     # - probe net
-    # pretrained_model_name_or_path = 'gpt2'
-    pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
+    pretrained_model_name_or_path = 'gpt2'
+    # pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
     # - not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
@@ -736,7 +736,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         # map = batch.map(lambda x: x) # map(fun, iter)
         map = lambda batch: batch.map(lambda x: x, batched=True, remove_columns=remove_columns)  # def batch: map(fun, iter)
     tokenized_batch = map(raw_text_batch)
-    print(f'{next(iter(tokenized_batch))=}')
+    # print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute diversity coefficient
     print(f'-- Compute diversity coefficient')
