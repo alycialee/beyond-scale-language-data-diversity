@@ -19,6 +19,12 @@ potentially breaking existing scaling laws in the landscape of LLMs like GPT-4.
 Candidates are encouraged to share their background when reaching out. 
 A strong foundation in Python is essential, and a belief in the paramount role of data in Machine Learning, aligning with data-centric ML principles, is a plus.
 
+Key citations:
+- Beyond Scale: the Diversity Coefficient as a Data Quality Metric Demonstrates LLMs are Pre-trained on Formally Diverse Data: https://arxiv.org/abs/2306.13840
+- The Curse of Low Task Diversity: On the Failure of Transfer Learning to Outperform MAML and Their Empirical Equivalence: https://slideslive.com/38996684/the-curse-of-low-task-diversity-on-the-failure-of-transfer-learning-to-outperform-maml-and-their-empirical-equivalence?ref=search-presentations-low+diversity
+- Task2Vec: Task Embedding for Meta-Learning https://arxiv.org/abs/1902.03545
+- Beyond neural scaling laws: beating power law scaling via data pruning: https://arxiv.org/abs/2206.14486
+
 # Prerequisites / Preparation
 Participants are expected to make direct contributions to the project and should be comfortable coding in Python. 
 A passion for exploring the intricacies of data and its pivotal role in the development and efficiency of machine learning models will be advantageous.
