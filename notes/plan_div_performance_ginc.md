@@ -1,6 +1,32 @@
-# Experiment Plan: The Effect of Diversity on Downstream Performance 
+# Beyond Scale II: Evaluating the Impact of Data Quality and Diversity on Learning Language Models using a Controlled Synthetic Benchmark
 
 original plan: https://github.com/brando90/explaining-emergence-icl-in-fms-with-diversity/blob/main/notes/experiment%20plans/_plan_div_performance_ginc.md
+
+# Evaluating the Impact of Data Quality and Diversity on Learning Language Models: A Synthetic Approach
+
+Brando Miranda, contact email: brando9@stanford.edu
+
+# Project Description
+In the evolving domain of Large Language Models (LLMs), the quality and diversity of training data play pivotal roles in determining model performance across various benchmarks. 
+This project aims to systematically explore the influence of data diversity on enhancing test performance for both specific and general benchmarks, utilizing a controlled synthetic dataset, GINC (Generative In-Context learning Dataset), designed to mimic NLP datasets. 
+By creating Synthetic Specific Benchmarks and General Benchmarks, we intend to investigate the hypothesis that diversity significantly improves performance on general benchmarks, potentially expanding the convex hull and facilitating the benefits of transfer learning. 
+Additionally, we will delve into the implications of formal quantitative measures of diversity, such as the Task2Vec diversity coefficient, on test performance. 
+This exploration is crucial in the current landscape of LLMs like GPT-4, where data-centric tools that automate the pipeline of data selection for improved data efficiency are paramount, potentially breaking existing scaling laws.
+
+# Recommended Background
+Candidates are encouraged to share their background when reaching out. A robust foundation in Python is crucial for direct contributions to the project.
+
+Key citations:
+- Beyond Scale: the Diversity Coefficient as a Data Quality Metric Demonstrates LLMs are Pre-trained on Formally Diverse Data: https://arxiv.org/abs/2306.13840
+- The Curse of Low Task Diversity: On the Failure of Transfer Learning to Outperform MAML and Their Empirical Equivalence: https://slideslive.com/38996684/the-curse-of-low-task-diversity-on-the-failure-of-transfer-learning-to-outperform-maml-and-their-empirical-equivalence?ref=search-presentations-low+diversity
+- Task2Vec: Task Embedding for Meta-Learning https://arxiv.org/abs/1902.03545
+- Beyond neural scaling laws: beating power law scaling via data pruning: https://arxiv.org/abs/2206.14486
+
+# Prerequisites / Preparation
+Participants should be comfortable coding in Python and are expected to make substantial contributions to the project. A belief in the paramount role of data and an interest in data-centric ML will be advantageous.
+
+# Motivation
+This endeavor is driven by the aspiration to unravel the intricate dynamics between data quality and model performance, contributing to advancements in AI/ML and fostering a deeper understanding of the mechanisms underlying effective model training. By embarking on this journey, we hope to illuminate the pathways to more efficient and robust language models, unlocking new possibilities in the realm of artificial intelligence.
 
 ## Goal
 
