@@ -1,4 +1,4 @@
-# Beyond Scale II: Evaluating the Impact of Data Quality and Diversity on Learning Language Models using a Controlled Synthetic Benchmark
+# Beyond Scale II: Evaluating the Impact of Data Quality and Diversity on LLMs in a Controlled Data Set
 
 original plan: https://github.com/brando90/explaining-emergence-icl-in-fms-with-diversity/blob/main/notes/experiment%20plans/_plan_div_performance_ginc.md
 
