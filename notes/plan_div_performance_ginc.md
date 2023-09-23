@@ -25,6 +25,8 @@ Key citations:
 # Prerequisites / Preparation
 Participants should be comfortable coding in Python and are expected to make substantial contributions to the project. A belief in the paramount role of data and an interest in data-centric ML will be advantageous.
 
+Read my collaboration expectations and send a response to me: https://brando90.github.io/brandomiranda/prospective-collaborations.html
+
 # Motivation
 This endeavor is driven by the aspiration to unravel the intricate dynamics between data quality and model performance, contributing to advancements in AI/ML and fostering a deeper understanding of the mechanisms underlying effective model training. By embarking on this journey, we hope to illuminate the pathways to more efficient and robust language models, unlocking new possibilities in the realm of artificial intelligence.
 
