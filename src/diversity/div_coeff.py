@@ -541,6 +541,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     from diversity.lower_upper_div_bounds import get_ub_ds
     print(f'{get_lb_ds=}')
     print(f'{get_ub_ds=}')
+    buffer_size = 500_000
     probabilities = []
     data_mixture_name = None
     streaming = True
@@ -613,6 +614,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     print(f'{wandb.config=}')
 
     # -- Get probe network
+    # -- Load model and tokenizer  
     # - gpt2
     print(f'{pretrained_model_name_or_path=}')
     if pretrained_model_name_or_path == 'gpt2':

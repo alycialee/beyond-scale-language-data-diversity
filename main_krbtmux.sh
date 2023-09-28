@@ -3,6 +3,7 @@
 # - live server stats: https://ilwiki.stanford.edu/doku.php?id=snap-servers:snap-gpu-servers-stats
 #8 a100 80GB
 ssh brando9@ampere1.stanford.edu
+ssh brando9@skampere1.stanford.edu
 #10 Quadro RTX 8000 48GB
 ssh brando9@hyperturing1.stanford.edu
 ssh brando9@hyperturing2.stanford.edu
