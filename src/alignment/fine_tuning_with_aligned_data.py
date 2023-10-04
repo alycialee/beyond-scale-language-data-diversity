@@ -66,14 +66,13 @@ def train():
 
     # -- Setup wandb
     import wandb
-    report_to = 'none'  # could should run even if dryrun
     # - Dryrun
     # mode = 'dryrun'; seed = random.randint(0, 2**32 - 1)
-    mode = 'dryrun'; seed = 0
+    mode = 'dryrun'; seed = 0; report_to = 'none'
 
     # - Online (real experiment)
     # mode = 'online'; seed = random.randint(0, 2**32 - 1)
-    mode = 'online'; seed = 0
+    mode = 'online'; seed = 0; report_to = 'wandb'
 
     # - c4 wt single
     path, name, data_files, split = ['csv'], [None], [os.path.expanduser('~/data/maf_data/maf_textbooks_csv_v1/train.csv')], ['train']
@@ -90,9 +89,10 @@ def train():
     # num_epochs = 4
     # single gpu
     # batch_size, gradient_accumulation_steps = 2, 1  # e.g., choosing large number mabe for stability of training? 4 (per_device_train_batch_size) * 8 (gradient_accumulation_steps), based on alpaca https://github.com/tatsu-lab/stanford_alpaca 
+    batch_size, gradient_accumulation_steps = 2, 16  # e.g., choosing large number mabe for stability of training? 4 (per_device_train_batch_size) * 8 (gradient_accumulation_steps), based on alpaca https://github.com/tatsu-lab/stanford_alpaca 
     # batch_size, gradient_accumulation_steps = 2, 32  # e.g., choosing large number mabe for stability of training? 4 (per_device_train_batch_size) * 8 (gradient_accumulation_steps), based on alpaca https://github.com/tatsu-lab/stanford_alpaca 
     # -- multiple gpus 3 4096 context len
-    batch_size, gradient_accumulation_steps = 4, 8  # e.g., choosing large number mabe for stability of training? 4 (per_device_train_batch_size) * 8 (gradient_accumulation_steps), based on alpaca https://github.com/tatsu-lab/stanford_alpaca 
+    # batch_size, gradient_accumulation_steps = 4, 8  # e.g., choosing large number mabe for stability of training? 4 (per_device_train_batch_size) * 8 (gradient_accumulation_steps), based on alpaca https://github.com/tatsu-lab/stanford_alpaca 
     # gradient_checkpointing = False
     gradient_checkpointing = True
     print(f'{batch_size=} {gradient_accumulation_steps=} {gradient_checkpointing=} {num_epochs=}')
@@ -221,6 +221,8 @@ def train():
     def map(batch):
         return batch.map(eval_preprocess, batched=True, remove_columns=remove_columns)
     eval_dataset = map(eval_dataset)
+    train_dataset = train_dataset
+
 
     # -- Compute max steps
     per_device_train_batch_size = batch_size
@@ -278,14 +280,14 @@ def train():
                     assert tokenized_data["labels"][idx, subsequent_eos_position] == -100, "The label for the subsequent_eos_position incorrect! Should be -100."
         return tokenized_data
 
-    # - Debug before trianing to see data
+    # - Debug before training to see data
     sample_data = train_dataset.select(range(per_device_train_batch_size)) if not isinstance(train_dataset, datasets.iterable_dataset.IterableDataset) else train_dataset.take(per_device_train_batch_size)
     processed_data = custom_collate_fn(sample_data, tokenizer=tokenizer)
     print(f'{processed_data=}')
 
     # -- Training arguments and trainer instantiation ref: https://huggingface.co/docs/transformers/v4.31.0/en/main_classes/trainer#transformers.TrainingArguments
     output_dir = Path(f'~/data/maf_data/results_{today}/').expanduser() if not debug else Path(f'~/data/maf_data/results/').expanduser()
-    print(f'{debug=} {output_dir=}')
+    print(f'{debug=} {output_dir=} \n {report_to=}')
     training_args = TrainingArguments(
         output_dir=output_dir,  #The output directory where the model predictions and checkpoints will be written.
         # num_train_epochs = num_train_epochs, 
@@ -305,11 +307,13 @@ def train():
         logging_dir=Path('~/data/maf/logs').expanduser(),
         save_steps=2000,  # alpaca does 2000, other defaults were 500
         # logging_steps=500,
-        logging_steps=50,
+        # logging_steps=50,
+        logging_steps=1,
         remove_unused_columns=False,  # TODO don't get why https://stackoverflow.com/questions/76879872/how-to-use-huggingface-hf-trainer-train-with-custom-collate-function/76929999#76929999 , https://claude.ai/chat/475a4638-cee3-4ce0-af64-c8b8d1dc0d90
         report_to=report_to,  # change to wandb!
         fp16=False,  # never ever set to True
         bf16=torch.cuda.get_device_capability(torch.cuda.current_device())[0] >= 8,  # if >= 8 ==> brain float 16 available or set to True if you always want fp32
+        do_eval=True,
     )
     # print(f'{training_args=}')
     print(f'{pretrained_model_name_or_path=}')
