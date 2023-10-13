@@ -36,6 +36,7 @@ Note: checkpoints were NOT controlled for data points, but experiments are still
 - TODO: think of argument
 - But, if you want you **can** re-train models (I suggest pre-trained (PT) models, not MAML models). But data points might not be the best way to control, maybe a sense of "complexity" or "information".
 - But it's better to have some results than none-since controlling for "info" is hard anyway while changing diversity at the same time.
+- idea to deal with different number of data points (choose checkpoints with similar average Task2Vec complexity): Compute the average Task2Vec complexity of each data set (models were trained on), and see if they all have approximately the same Task2Vec complexity. As proposed by Task2Vec. Then choose data sets with the similar complexity. Perhaps similar defined that the effect size difference is small or intuitively if the numbers look fine. But note, this requires additional experiments. 
 
 ### Models
 Models can be found in my Zenodo:
