@@ -53,3 +53,7 @@ I suggest you create a slack channel so we can coordinate questions to run evals
 
 ## 1.2 Train Diversity Coeff  vs Test Accuracy/loss -- using MAML vision Checkpoints
 Same as in 1.1 but using MAML checkpoints
+
+## Compute
+
+Ask cs330 staff for compute credits or put CS 330 instructor when requesting Scherlock: https://www.sherlock.stanford.edu/ (or perhaps my advisor but I (brando) will ping him before you do that)
