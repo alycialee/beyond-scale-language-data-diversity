@@ -30,6 +30,8 @@ Experiment set up suggestion:
   - same architecture/params, same opt, same convergence criteria, same tokens, or as many controlled variables
   - intersection/overlap of eval and train is the same (ideally test has no intersection, but if the error/bias is systematic experiments are meaningful)
  
+**Essential Goal: Evaluate checkpoints fairly on a well chosen eval/test data set (for meta-learning/ICL).**
+ 
 Note: checkpoints were NOT controlled for data points, but experiments are still meaningful because:
 - TODO: think of argument
 - But, if you want you **can** re-train models (I suggest pre-trained (PT) models, not MAML models). But data points might not be the best way to control, maybe a sense of "complexity" or "information".
@@ -43,6 +45,10 @@ Models can be found in my Hugging Face (HF):
 gdrive:
 - https://drive.google.com/drive/folders/15cuk9Zu455DXNMVBMmRpZdUZUCSImsmf
 I suggest you download these to the servers you will use programatically i.e., with Python/Bash. It's easy if you ask GPT4/Claude.
+
+### Code
+- code: https://github.com/brando90/diversity-for-predictive-success-of-meta-learning
+I suggest you create a slack channel so we can coordinate questions to run evals on checkpoints.
 
 ## 1.2 Train Diversity Coeff  vs Test Accuracy/loss -- using MAML vision Checkpoints
 Same as in 1.1 but using MAML checkpoints
