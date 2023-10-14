@@ -3,6 +3,7 @@
 # - live server stats: https://ilwiki.stanford.edu/doku.php?id=snap-servers:snap-gpu-servers-stats
 #8 a100 80GB
 ssh brando9@ampere1.stanford.edu
+ssh brando9@skampere1.stanford.edu
 #10 Quadro RTX 8000 48GB
 ssh brando9@hyperturing1.stanford.edu
 ssh brando9@hyperturing2.stanford.edu
@@ -71,10 +72,12 @@ reauth
 
 source $AFS/.bashrc.lfs
 conda activate beyond_scale
+CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
 echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
 
 # -- Run
 python ~/beyond-scale-language-data-diversity/src/diversity/div_coeff.py
+
 
 # -- other option is to run `echo $SU_PASSWORD | /afs/cs/software/bin/reauth` inside of python, right?
 export JOB_PID=$!
