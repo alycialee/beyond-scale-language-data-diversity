@@ -1,6 +1,8 @@
-# Data Quality as Data Diversity + Data Alignment
+# Data Quality as Data Diversity/Coverage + Data Alignment
 
 Goal: Design a robust & thorough metric for data quality that causes better data selection and thus better data.
+
+Note: we propose to change cross diversity coefficient to be called now the coverage coefficient. 
 
 # Proposal
 Recall essential goal: design a metric that increases test performance. 
@@ -26,12 +28,12 @@ T = Target (e.g., test data set, e.g., test OpenWebText or domain specific e.g.,
 More concretely
 ```markdown
 # Data Quality := alignment + (cross) diversity
-DQ(S, T) = alpha_T * Alingtment(S, T) + alpha_S * Cross_Diversity(S, T)
+DQ(S, T) = alpha_T * Alingment(S, T) + alpha_S * Coverage_Coeff(S, T)
 
 # 1. first, center S -> T (so use large batch size for both, e.g., whole data set or 1024, 2028)
 # 2. second, match S's spread to T (for computation & avoiding OOM/memory issues use smaller batch size, seq length e.g., 512 as in beyond scale)
 
-DQ(S, T) = alpha_T * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf, T} } ) ] + alpha_S * E_{B_{S, 512} ~ S, B_{T, 512} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512, S} } ) ]
+DQ(S, T) = alpha_a * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf, T} } ) ] + alpha_c * E_{B_{S, 512} ~ S, B_{T, 512} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512, S} } ) ]
 ```
 
 
