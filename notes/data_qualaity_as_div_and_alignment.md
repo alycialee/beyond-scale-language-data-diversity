@@ -47,6 +47,7 @@ We say "the data quality of Source Domain to Target Domain (S2T).
 Thoughts/tips:
 - use consistent setting of probe network & hps to make DQ comparable. e.g., values from GPT2 vs LLaMAv2 might not be comparable
 - using e := T2VEmbds to embed batches/tasks makes our metrics **multi-modal**.
+- Note, although coverage coeff and alignement coeff seem similar (i.e., corss_div() , 1-cross_div()), due to different batch sizes for ((very non-linear** Task2Vec embedding method, it results in different values and not just `a_1 corss_div() +a_2 1-cross_div() = 1 - (a_1 - a_2)corss_div()`
 
 ##
 
