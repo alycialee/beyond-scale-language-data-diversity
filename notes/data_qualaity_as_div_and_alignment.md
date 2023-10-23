@@ -22,8 +22,8 @@ With that in mind we propose the data quality metric DQ given a (set) of source 
 DQ(S, T) = alpha_{alg} * "Align mean Task Source with Target" + alpha_{coverage} * "Cover Target's Task Spread with Source"
 DQ(S, T) = alpha_T * Alignment(S, T) + alpha_S * Diversity(S, T)
 
-S = Source (e.g., train data set, e.g., C4 or C4 + USPTO)
-T = Target (e.g., test data set, e.g., test OpenWebText or domain specific e.g., IsaProofNet for Autoformalization or maths textbooks)
+S := Source (e.g., train data set, e.g., C4 or C4 + USPTO)
+T := Target (e.g., test data set, e.g., test OpenWebText or domain specific e.g., IsaProofNet for Autoformalization or maths textbooks)
 ```
 More concretely
 ```markdown
@@ -34,6 +34,13 @@ DQ(S, T) = alpha_T * Alingment(S, T) + alpha_S * Coverage_Coeff(S, T)
 # 2. second, match S's spread to T (for computation & avoiding OOM/memory issues use smaller batch size, seq length e.g., 512 as in beyond scale)
 
 DQ(S, T) = alpha_a * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf, T} } ) ] + alpha_c * E_{B_{S, 512} ~ S, B_{T, 512} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512, S} } ) ]
+
+S := Source (e.g., train data set, e.g., C4 or C4 + USPTO)
+T := Target (e.g., test data set, e.g., test OpenWebText or domain specific e.g., IsaProofNet for Autoformalization or maths textbooks)
+d := cosine distance
+e_{B} := Task2Vec embeddings
+B_{B, N} := batch of data currently sampled (~ task) from domain B with N examples.
+alpha_i := mixing coeffs (tbd how to remove HP or choose it well...)
 ```
 We say "the data quality of Source Domain to Target Domain (S2T).
 
