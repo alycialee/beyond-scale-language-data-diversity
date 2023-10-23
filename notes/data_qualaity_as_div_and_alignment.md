@@ -40,7 +40,7 @@ T := Target (e.g., test data set, e.g., test OpenWebText or domain specific e.g.
 d := cosine distance
 e_{B} := Task2Vec embeddings
 B_{B, N} := batch of data currently sampled (~ task) from domain B with N examples.
-alpha_i := mixing coeffs (tbd how to remove HP or choose it well...)
+alpha_i := mixing coeffs (tbd how to remove HP or choose it well...DoReMi? Or good Hps that works in different settings or specific domains e.g., AF)
 ```
 We say "the data quality of Source Domain to Target Domain (S2T).
 
