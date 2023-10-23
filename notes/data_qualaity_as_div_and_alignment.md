@@ -27,13 +27,17 @@ More concretely
 ```markdown
 # Data Quality := alignment + (cross) diversity
 DQ(S, T) = alpha_T * Alingtment(S, T) + alpha_S * Cross_Diversity(S, T)
-# 1. first, center S -> T
-# 2. second, match S's spread to T
 
-DQ(S, T) = alpha_T * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf. S} } ) ] +
-alpha_S * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512. S} } ) ]
+# 1. first, center S -> T (so use large batch size for both, e.g., whole data set or 1024, 2028)
+# 2. second, match S's spread to T (for computation & avoiding OOM/memory issues use smaller batch size, seq length e.g., 512 as in beyond scale)
 
+DQ(S, T) = alpha_T * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf, T} } ) ] + alpha_S * E_{B_{S, 512} ~ S, B_{T, 512} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512, S} } ) ]
 ```
 
+
+Thoughts/tips:
+- use consistent setting of probe network & hps to make DQ comparable. e.g., values from GPT2 vs LLaMAv2 might not be comparable
+
+##
 
 TODO: display equations in markdown https://chat.openai.com/c/f43e625b-dbd6-4ecc-93f6-d00f9aa10af6 
