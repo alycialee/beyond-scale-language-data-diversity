@@ -35,10 +35,11 @@ DQ(S, T) = alpha_T * Alingment(S, T) + alpha_S * Coverage_Coeff(S, T)
 
 DQ(S, T) = alpha_a * E_{B_{S, inf} ~ S, B_{T, inf} ~ T}[ d( e_{B_{inf, S}}, e_{B_{inf, T} } ) ] + alpha_c * E_{B_{S, 512} ~ S, B_{T, 512} ~ T}[ 1 - d( e_{B_{512, S}}, e_{B_{512, S} } ) ]
 ```
-
+We say "the data quality of Source Domain to Target Domain (S2T).
 
 Thoughts/tips:
 - use consistent setting of probe network & hps to make DQ comparable. e.g., values from GPT2 vs LLaMAv2 might not be comparable
+- using e := T2VEmbds to embed batches/tasks makes our metrics **multi-modal**.
 
 ##
 
