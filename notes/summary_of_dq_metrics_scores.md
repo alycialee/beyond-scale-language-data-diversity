@@ -27,7 +27,7 @@ Pros:
 - (+) curious how they select data points efficiently given GPUs work better with batches. Maybe the compute metrics in batch then loop through batch dimension to select data points?
 Cons:
 - (-) not clear they use val set (but easy to fix?)
-- (-) I think task2vec (L1) complexity is better (more principled due to kolmogorov)
+- (-) I think task2vec (L1) complexity is better (more principled due to kolmogorov) but perhaps margin is enough.
 
 Differences with our Task2Vec alignment metric:
 - We score based of assumption that "training on most similar to test set" makes most sense. If we had the "test set" we'd train on it.
