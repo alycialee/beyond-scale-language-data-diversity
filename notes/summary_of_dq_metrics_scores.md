@@ -1,6 +1,6 @@
 # Review of Data Quality Metric
 
-# TODO
+# TODO: go through list
 so the papers for homework for brando to write a related work + how it relates to my work:
 - vendi score [x] but put here
 - do re mi [x] put here
