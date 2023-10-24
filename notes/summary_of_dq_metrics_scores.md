@@ -45,3 +45,5 @@ Questions:
   - A1: Not sure, but I assume they score N example (all the train) and then select k based on compute. So k is pre-given by compute budget.
 - Q2: Why cosine distance?
   - A2: I think it's due to margin inspiration, but Task2Vec is more principled (imho) and used L1 of Task2Vec embeddings. Space to improve here! 
+- Q3: Curous if they abaleted "hardness assumption". They seem to pre assume this is the best metric but never test if this is the "right metric"? (I do that too I guess.
+  - A3: abalate this via 1. choose farthest example to proto (their "hargest") 2. choose the closest example to proto ("alignment to target task"). The opposite abalation should've been done to know what the true source of variance/results comes from. 
