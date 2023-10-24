@@ -13,7 +13,8 @@ so the papers for homework for brando to write a related work + how it relates t
 - Task2Vec Div Coeff & Task2Vec Alg
 
 ## General thing to keep in mind
-Selecting data must be cheaper than training on it. Otherwise just train on all of it. (data selection should be embarrasingly parallel, no depedencies unlike SGD + consider training has the cost of forward + backward pass)
+Selecting data must be cheaper than training on it. Otherwise just train on all of it. (data selection should be embarrasingly parallel, no depedencies unlike SGD + consider training has the cost of forward + backward pass).
+Data quality should always be defined such that test performance is likely to improve. 
 
 ## SSL Prototype
 Method:
