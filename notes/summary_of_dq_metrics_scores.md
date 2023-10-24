@@ -30,7 +30,7 @@ Cons:
 - (-) I think task2vec (L1) complexity is better (more principled due to kolmogorov) but perhaps margin is enough.
 
 Differences with our Task2Vec alignment metric:
-- We score based of assumption that "training on most similar to test set" makes most sense. If we had the "test set" we'd train on it.
+- We score based of assumption that "training on most similar to test set" makes most sense. If we had the "test set" we'd train on it. So difficulty doesn't come in picture but perhaps choosing hardest example from target (val) domain is the way to improve this (another point to abalate)
   - based on this, training on the most different examples to your prorotypes doesn't make sense. But this only means that perhaps their definition of hard isn't pricipled/optimal
   - this opens the opportunity to use Task2Vec complexity (L1 of Task2Vec embeddings) -- train on the "Task2Vec embeddings most similar to the target domain (val)". e.g., Task2Vec is related to Kolmogorov complexity, so perhaps this is a motivation to believe this different approach is better.
   - interesting difference. Opens up for different abalations:
@@ -38,6 +38,7 @@ Differences with our Task2Vec alignment metric:
       2. choose data based on t2v algiment + div https://github.com/brando90/beyond-scale-language-data-diversity/blob/main/notes/data_quality_eq_div_plus_alignment_and_data_selection.md
       3. Prototypes constructions: Centroids vs large batch embedding with Task2Vec for measuing t2v aligmnent or SSL proto metric.
       4. testing their SSL proto metric on it's own
+      5. is selecting aligment with val is enough (e.g., take all val and embed it) or better to take the hardest example from val to create embeddings/prototypical examples?
 
 Questions: 
 - Q1: How do they choose how many points to choose?
