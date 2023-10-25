@@ -4,7 +4,7 @@
 -
 **Desc**: Script for training a custom architecture GPT-2 model from scratch on a HuggingFace Dataset for a specific number of tokens.
 
-**Tested?**: Yes, about 80% done. 
+**Tested?**: Mostly, about 80% done. 
 
 **Works on SNAP?**: Yes (based on a basic test on Hyperturing2)
 
