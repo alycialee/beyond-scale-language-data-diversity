@@ -51,11 +51,14 @@ def get_diversity_coefficient(dataset,
         shuffled_dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed) if shuffle else dataset
         # raw_text_batch = shuffled_dataset.take(batch_size)
         # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(range(batch_size))
-        raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
-        tokenized_batch = map(raw_text_batch)
+        # raw_text_batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(batch_size, batch_size))
+        # tokenized_batch = map(raw_text_batch)
+        batch = shuffled_dataset.take(batch_size) if streaming else shuffled_dataset.select(random.sample(list(range(len(shuffled_dataset))), batch_size))
+        batch = map(batch)
         if verbose:
-            print(f'{raw_text_batch=}')
-            print(f'{tokenized_batch=}')
+            # print(f'{raw_text_batch=}')
+            # print(f'{tokenized_batch=}')
+            print(f'{batch=}')
             # time_start = time.time()
             # print(f'{next(iter(raw_text_batch))=}')
             # print(f'{next(iter(tokenized_batch))=}')
@@ -63,9 +66,9 @@ def get_diversity_coefficient(dataset,
 
         # - Get Task2Vec embedding for batch
         if not debug:
-            embedding, loss = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(tokenized_batch)
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'seed': seed}).embed(batch)
         else:
-            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(tokenized_batch, epochs=1)  # only for debugging
+            embedding, loss = Task2Vec(probe_network, classifier_opts={'break_early': True, 'seed': seed}).embed(batch, epochs=1)  # only for debugging
         print(f'{loss=}\n{embedding=}\n') if verbose else None
         
         # - Collect results
@@ -534,12 +537,18 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     from datasets.iterable_dataset import IterableDataset
     import random
     from diversity.data_mixtures import get_uniform_data_mixture_for_c4_wt103, get_doremi_based_data_mixture_for_c4_wt103, get_llama_v1_based_data_mixture_for_c4_wt103
+    from diversity.lower_upper_div_bounds import get_lb_ds
+    from diversity.lower_upper_div_bounds import get_ub_ds
+    print(f'{get_lb_ds=}')
+    print(f'{get_ub_ds=}')
+    buffer_size = 500_000
     probabilities = []
     data_mixture_name = None
     streaming = True
     data_files = [None]
     seed = 0
     split = 'train'
+    max_length = 128
     # token = open(Path('~/data/hf_token.txt').expanduser()).read().strip()  # put to load_dataset( ..., token=token)
 
     # -- Setup wandb
@@ -550,9 +559,9 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     mode = 'dryrun'; num_batches = 3; seed = 0
 
     # - Online (real experiment)
-    # mode = 'online'; num_batches = 600
+    mode = 'online'; num_batches = 600
     # mode='online'; num_batches = 600; seed = random.randint(0, 2**32 - 1)
-    mode = 'online'; num_batches = 600; seed = 0
+    # mode = 'online'; num_batches = 600; seed = 0
     # - c4 wt singl
     path, name = 'c4', 'en'
     path, name = "wikitext", 'wikitext-103-v1'
@@ -561,9 +570,11 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # path, name = 'conceptofmind/pile_cc', 'sep_ds'
     # path, name = 'togethercomputer/RedPajama-Data-1T', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
     # path, name = 'cerebras/SlimPajama-627B', 'default'  # https://github.com/togethercomputer/RedPajama-Data/issues/70, https://github.com/togethercomputer/RedPajama-Data
+    path, name, streaming = "lb", 'lb', False
+    path, name, streaming = "ub", 'ub', False
     # - c4 wt mix
     # path, name, data_files = ['c4', 'wikitext'], ['en', 'wikitext-103-v1'], [None, None]
-    probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
+    # probabilities, data_mixture_name = get_uniform_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_doremi_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = get_llama_v1_based_data_mixture_for_c4_wt103()
     # probabilities, data_mixture_name = [0.75, 0.25], '[0.75, 0.25]' 
@@ -586,8 +597,8 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     # # probabilities, data_mixture_name = get_llama_v1_data_mixtures_5subsets_of_pile(name)
     # probabilities, data_mixture_name = get_doremi_data_mixture_5subsets_of_pile(name)
     # - probe net
-    # pretrained_model_name_or_path = 'gpt2'
-    pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
+    pretrained_model_name_or_path = 'gpt2'
+    # pretrained_model_name_or_path = 'meta-llama/Llama-2-7b-hf'
     # - not changing
     batch_size = 512
     today = datetime.datetime.now().strftime('%Y-m%m-d%d-t%Hh_%Mm_%Ss')
@@ -603,6 +614,7 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
     print(f'{wandb.config=}')
 
     # -- Get probe network
+    # -- Load model and tokenizer  
     # - gpt2
     print(f'{pretrained_model_name_or_path=}')
     if pretrained_model_name_or_path == 'gpt2':
@@ -652,9 +664,16 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
         elif path == 'parquet':
             print(f'{data_files=}')
             return load_dataset(path, data_files=data_files, streaming=streaming, split=split).with_format("torch")
-        if 'pile_cc' in path or 'pile-cc' in path:
+        elif 'pile_cc' in path or 'pile-cc' in path:
             return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
+        elif name == 'lb':
+            ds = get_lb_ds(tokenizer, num_batches * batch_size, max_length)
+            return ds
+        elif name == 'ub':
+            ds = get_ub_ds(tokenizer, num_batches * batch_size, max_length)
+            return ds
         else:
+            print(f'{path=} {name=} {data_files=} {split=} with_format is torch')
             return load_dataset(path, name, streaming=streaming, split=split).with_format("torch")
     # - get data set for real now
     if isinstance(path, str):
@@ -710,12 +729,16 @@ def experiment_compute_diveristy_coeff_single_dataset_then_combined_datasets_wit
 
     # - Prepare functions to tokenize batch
     def preprocess(examples):
-        return tokenizer(examples["text"], padding="max_length", max_length=128, truncation=True, return_tensors="pt")
+        return tokenizer(examples["text"], padding="max_length", max_length=max_length, truncation=True, return_tensors="pt")
     remove_columns = column_names  # remove all keys that are not tensors to avoid bugs in collate function in task2vec's pytorch data loader
     def map(batch):
         return batch.map(preprocess, batched=True, remove_columns=remove_columns)
+    if name == 'lb' or name == 'ub':
+        # map = map(lambda x: x, batch)  # map(fun, iter)
+        # map = batch.map(lambda x: x) # map(fun, iter)
+        map = lambda batch: batch.map(lambda x: x, batched=True, remove_columns=remove_columns)  # def batch: map(fun, iter)
     tokenized_batch = map(raw_text_batch)
-    print(f'{next(iter(tokenized_batch))=}')
+    # print(f'{next(iter(tokenized_batch))=}')
 
     # -- Compute diversity coefficient
     print(f'-- Compute diversity coefficient')
