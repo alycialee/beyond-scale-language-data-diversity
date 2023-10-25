@@ -53,3 +53,5 @@ Questions:
 # Appendix
 
 > Key predictions of the theory: (1) When data is scarce, keeping easy examples is better, while when data is abundant, keeping hard examples is better. (2) Pareto optimal pruning fractions that become more aggressive for larger initial datasets can achieve exponential scaling between test error and pruned dataset size.
+
+ref: https://claude.ai/chat/529c12c3-2cb0-4214-8fe0-2885e710b83d
