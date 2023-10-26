@@ -17,9 +17,11 @@ Selecting data must be cheaper than training on it. Otherwise just train on all 
 Data quality should always be defined such that test performance is likely to improve. 
 
 ## SSL Prototype
+TODO: write a single equation/alg for each selection strategy. 
+
 Method:
 - create centroids of the data using k-means (unsupervised or supervised) (unclear if they cluster train or val, I suggest val, then this method is more comparable to my Task2Vec alginment/dq metric)
-- score/metric := `ssl_proto(data_point, centroid) = cosine(data_point, centroid)`
+- score/metric := `ssl_proto(data_point, centroid) ~ cosine(data_point, centroid) ~ margin`
   - they define high quality (to trian on) as "hard examples" -- so the least similar to the prototypes (nearly opposite of my alignment metric?)
 
 Pros/Cons of SSL proto
@@ -47,3 +49,9 @@ Questions:
   - A2: I think it's due to margin inspiration, but Task2Vec is more principled (imho) and used L1 of Task2Vec embeddings. Space to improve here! 
 - Q3: Curous if they abaleted "hardness assumption". They seem to pre assume this is the best metric but never test if this is the "right metric"? (I do that too I guess.
   - A3: abalate this via 1. choose farthest example to proto (their "hargest") 2. choose the closest example to proto ("alignment to target task"). The opposite abalation should've been done to know what the true source of variance/results comes from. 
+
+# Appendix
+
+> Key predictions of the theory: (1) When data is scarce, keeping easy examples is better, while when data is abundant, keeping hard examples is better. (2) Pareto optimal pruning fractions that become more aggressive for larger initial datasets can achieve exponential scaling between test error and pruned dataset size.
+
+ref: https://claude.ai/chat/529c12c3-2cb0-4214-8fe0-2885e710b83d
