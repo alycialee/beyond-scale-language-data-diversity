@@ -340,10 +340,8 @@ def main():
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
 
-    # NOTE:
-    # - Assumes you want to use a streaming dataset for training. If not, you'll have to modify the code (delete all calls to '.to_iterable_dataset').
-    # - Assumes you have already cached the datasets you want to use. If you haven't, this will automatically cache the dataset during the cached_dataset = load_dataset() call
     if data_args.dataset_name is not None:
+        # Assumes you have already cached the datasets you want to use. If you haven't, this will automatically cache the dataset during the cached_dataset = load_dataset() call
         if data_args.streaming == 'CacheStream':
             # Logic for single datasets from HF hub, e.g. just Pubmed
             if data_args.dataset_config_name is None or '+' not in data_args.dataset_config_name:
@@ -410,6 +408,7 @@ def main():
                     print('> > > Added validation key to IterableDatasetDict. NOTE: have set val data = train data')
 
                 print('> > > Loaded *interleaved dataset* from HF hub. Details: overall name:', data_args.dataset_name, 'sub-datasets:', sub_dataset_names, 'interleave probabilities:', data_mix, 'streaming:', data_args.streaming)
+        # Assumes no caching; streams dataset directly from HF server. Can be slower/more unreliable than streaming from cache, but varies by dataset.
         elif data_args.streaming == 'True':
             if data_args.dataset_config_name is None or '+' not in data_args.dataset_config_name:
                 raw_datasets = load_dataset(
@@ -804,7 +803,7 @@ def _mp_fn(index):
 
 
 '''
-Example commands:
+Example usage:
 
 conda activate train_test1
 
@@ -834,6 +833,5 @@ python gpt2_train.py \
 '''
 if __name__ == "__main__":
     main()
-
 
 
