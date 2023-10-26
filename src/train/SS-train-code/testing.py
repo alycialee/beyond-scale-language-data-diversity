@@ -684,7 +684,7 @@ def main():
 
         print('> > > Did do_eval setup')
 
-    # Initialize our Trainer
+    # Initialize our Trainer. Source code: https://huggingface.co/transformers/v3.4.0/_modules/transformers/trainer.html
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -705,6 +705,11 @@ def main():
     print('\n\n\n[[[[[[[[[[[[   TESTING   [[[[[[[[[[[[\n\n\n')
 
     ###   Tests   ###
+    def a_single_ex():
+        for ex in train_dataset:
+            print('keys:', ex.keys(), 'content:', ex)
+            break
+
     def train_chunk_size_and_content(num_ex=20):
         counter = 0
         for ex in train_dataset:
@@ -741,13 +746,31 @@ def main():
             return train_batch_size(exs_per_batch=exs_per_batch) * max_steps
         else:
             return train_batch_size(exs_per_batch=exs_per_batch)
-    # 20k steps and 64 examples per batch is 1.31 B tokens for following datasets: (uspto, pubmed, combo)
+    # 20k steps and 64 examples per batch is 1.31 B tokens for following datasets: uspto, pubmed, combo
+
+    # DataLoader use (which includes collator) https://huggingface.co/docs/datasets/use_with_pytorch
+    def datacollator_output(num_exs=10):
+        ex_list = []
+        counter = 0
+        for ex in train_dataset:
+            ex_list.append(ex)
+            counter += 1
+            if counter == num_exs:
+                break
+
+        return default_data_collator(ex_list)
+
+    def trainer_obj_info():
+        print('TRAINER ARGS:')
+        print('batch size (passed into DataLoader obj used in Trainer.train loop)', trainer.args.train_batch_size, 'epochs', trainer.args.num_train_epochs)
+        # Verified that each example has 1024 non-padding tokens, dataloader creates batch of size trainer.args.train_batch_size, and that each training step is on this batch of inputs. Did via reading Trainer obj source code.
+
 
     ###   Test calls   ###
     max_steps = 20000
     batch_size = 64
 
-    train_chunk_size_and_content(20)
+    # train_chunk_size_and_content(20)
 
     # train_long_range_chunk_size_check()
 
@@ -755,7 +778,15 @@ def main():
 
     # print(train_batch_size(max_steps=max_steps, exs_per_batch=batch_size))
 
-    print('Total tokens seen during training, given (', max_steps, 'training steps /', batch_size, 'examples per batch i.e. training step ):  ', total_tokens_seen_in_training_run(max_steps=max_steps, exs_per_batch=batch_size))
+    # print(a_single_ex())
+
+    # collator_output = datacollator_output()
+    # for elem in collator_output['input_ids']:
+    #     print('datacollator elelment:', elem[:10], len(elem))
+
+    # print(trainer_obj_info())
+
+    # print('Total tokens seen during training, given (', max_steps, 'training steps /', batch_size, 'examples per batch i.e. training step ):  ', total_tokens_seen_in_training_run(max_steps=max_steps, exs_per_batch=batch_size))
 
 
     print('\n\n\n[[[[[[[[[[[[   TESTING   [[[[[[[[[[[[\n\n\n')
@@ -828,10 +859,10 @@ python testing.py --output_dir scrap_results5 --do_train --per_device_train_batc
 python testing.py --output_dir scrap_results5 --do_train --per_device_train_batch_size 2 --max_steps 10 --save_steps 100 --optim adamw_torch --dataset_config_name uspto --data_mix .3,.7 --overwrite_output_dir True
 
 python testing.py \
---output_dir scrap_results101 \
+--output_dir scrap_results5 \
 --do_train \
 --per_device_train_batch_size 2 \
---max_steps 10 \
+--max_steps 50 \
 --save_steps 100 \
 --optim adamw_torch \
 --dataset_config_name pubmed \
@@ -840,6 +871,5 @@ python testing.py \
 '''
 if __name__ == "__main__":
     main()
-
 
 
