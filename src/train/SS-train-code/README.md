@@ -11,7 +11,7 @@
 **How to run a fair comparison**:
 
 At a high level:
-- We use the same architecture, same number of parameters, same number of training steps (specified in run command), same optimizer, same hyperparams (learning rate, etc.), and same 'token pool.'
+- We use the same architecture, same number of parameters, same number of training steps, same optimizer, same hyperparams (learning rate, etc.), and same 'token pool.'
 - Vary the training dataset (by changing the name of the training dataset passed in).
 - This allows us to control for essentially all variables except for the diversity of the training data. Therefore, treating diversity as our independent variable, we will know that differences in the trained model (dependent variable) likely stem from differences in their training diversity.
 
