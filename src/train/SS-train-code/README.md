@@ -20,20 +20,48 @@ conda activate train_test1
 export CUDA_VISIBLE_DEVICES=1,2,3,4  # Select which GPUs to use for training
 
 python gpt2_train.py \
---output_dir scrap_results \                    # Directory where checkpoints are saved. Logistical variable
+--output_dir path/to/dir \                    # Directory where checkpoints are saved. Logistics
 --config_overrides n_embd=x,n_layer=y,n_head=z  # Architecture and number of parameters of each model. Constant
 --do_train \
---per_device_train_batch_size 8 \               # Number of examples seen per training batch. Constant
---max_steps 20000 \                             # Total number of optimization steps, i.e. total number of batches seen. Constant
---save_steps 2000 \                             # How many optimization steps to wait before saving another checkpoint. Constant
+--per_device_train_batch_size b \               # Number of examples seen per training batch. Constant
+--max_steps n \                             # Total number of optimization steps, i.e. total number of batches seen. Constant
+--save_steps s \                             # How many optimization steps to wait before saving another checkpoint. Constant
 --optim adamw_torch \                           # Optimizer to use. Constant
 --dataset_name VARIABLE_DATASET \               # Overall dataset name. VARY
 --dataset_config_name VARIABLE_SUBDATASET \     # Sub-dataset name, if applicable. VARY
---streaming CacheStream                         # Data loading (i.e.) streaming method. Logistical variable 
+--streaming CacheStream                         # Data loading (i.e.) streaming method. Logistics 
 
-# all non-specified hyperparameters are set to the default for TrainingArguments (see https://huggingface.co/docs/transformers/v4.34.1/en/main_classes/trainer#transformers.TrainingArguments)
+# all non-specified hyperparameters are set to the default for TrainingArguments (see https://huggingface.co/docs/transformers/v4.34.1/en/main_classes/trainer#transformers.TrainingArguments). Constant
 # e.g. learning rate set to default (5e-05), adam parameters set to default (beta1=0.9, beta2=0.999, epsilon=1e-08)
 ```
+
+For my experiments, I ran
+```
+export CUDA_VISIBLE_DEVICES=1,2,3,4
+
+python gpt2_train.py \
+--output_dir results_<dataset> \                    
+--config_overrides n_embd=512,n_layer=8,n_head=8
+--do_train \
+--per_device_train_batch_size 16 \
+--max_steps 20000 \
+--save_steps 2000 \
+--optim adamw_torch \
+--dataset_name EleutherAI/pile \
+--dataset_config_name <dataset> \
+--streaming CacheStream
+```
+For <dataset> in \[PubMed, USPTO, PubMed interleaved with USPTO\]
+
+Hence, the important decisions for training were:
+- _Using a ~50 M parameter GPT-2 model with embedding size 512, 8 layers, and 8 heads._ I chose this setup because the overall parameter count is similar to the smallest models used in Eleuther's Pythia series of models and appears to provide the minimum viable scale to test differences in ability from diverse pretraining data, and the configuration of embedding size, layers, and heads is also similar to those already tested and used by the Pythia series of models.
+- _Using a batch size of 64 examples per batch._ I chose this setup since this was the largest batch size that trained efficiently given the compute I had access to. Furthermore, this is equivalent to 64*1024 ~= 65.5k tokens per batch, which is within and OOM of GPT-3's token batch sizes (~250k tokens https://discuss.huggingface.co/t/how-to-choose-optimal-batch-size-for-training-llms/23861)
+- _Using 20k optimization steps._ I chose this setup since, by the end of training, each model will have seen 1024\*64\*20000 ~= 1.31B tokens. This is the same OOM as the tokens seen by larger GPT-2 models (~9B tokens for 125M to 1.5B parameter models https://github.com/karpathy/nanoGPT/tree/master/data/openwebtext)
+- _Using the adamw optimizer._ I used this optimizer since it's a standard optimizer used for training LLMs.
+- _Using PubMed, USPTO, PubMed interleaved with USPTO datasets (subsets of the Pile)._ I used the PubMed dataset and USPTO dataset since they have different diversity coefficients (they differ by ~0.01), but are lower diversity than many other datasets tested (i.e. they have diversity coefficient < 0.20). I use the PubMed interleaved with USPTO dataset since it contains the same content as the other two datasets, but is more diverse than each individual dataset (~0.01 more than PubMed, ~0.02 more than USPTO). Therefore, using this mix of datasets allows me to test variation in diversity at relatively low levels (< 0.20), while holding constant the 'pool of tokens' that the data is chosen from, i.e. we test the effect of diversity of the training data directly without the confounding variable of different datasets' overlap and similarity with the training data. E.g. if the driver of performance is merely that PubMed data has more overlap/similarity to the eval data, then we should see the PubMed-trained model perform best (including the more diverse interleaved model); on the other hand, if the inherent diversity of the training data is the most important factor, then we should see the interleaved model perform best.
+- _Setting all other hyperparameters to default._ I chose this setup since the HuggingFace defaults are likely reasonably set to work well across a range of LLM objectives, and importantly keeps this non-independent variable controlled/constant across all models.
+
+
 
 
 **cache_datasets.py**
