@@ -53,7 +53,7 @@ python gpt2_train.py \
 --dataset_config_name <dataset> \
 --streaming CacheStream
 ```
-For \<dataset\> in \[PubMed, USPTO, PubMed interleaved with USPTO\]
+for \<dataset\> in \[PubMed, USPTO, PubMed interleaved with USPTO\]
 
 Hence, the important decisions for training were:
 - _Using a ~50 M parameter GPT-2 model with embedding size 512, 8 layers, and 8 heads._ I chose this setup because the overall parameter count is similar to the smallest models used in Eleuther's Pythia series of models and appears to provide the minimum viable scale to test differences in ability from diverse pretraining data, and the configuration of embedding size, layers, and heads is also similar to those already tested and used by the Pythia series of models. This is held constant, as it's not our independent variable.
