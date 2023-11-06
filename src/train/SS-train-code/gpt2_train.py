@@ -616,23 +616,12 @@ def main():
         return output
 
     with training_args.main_process_first(desc="dataset map tokenization"):
-        if not data_args.streaming:
-            tokenized_datasets = raw_datasets.map(
-                tokenize_function,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                remove_columns=column_names,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc="Running tokenizer on dataset",
-            )
-            print('> > > Token mapped, normal dataset')
-        else:
-            tokenized_datasets = raw_datasets.map(
-                tokenize_function,
-                batched=True,
-                remove_columns=column_names,
-            )
-            print('> > > Token mapped, streaming dataset')
+        tokenized_datasets = raw_datasets.map(
+            tokenize_function,
+            batched=True,
+            remove_columns=column_names,
+        )
+        print('> > > Token mapped, streaming dataset')
 
     if data_args.block_size is None:
         block_size = tokenizer.model_max_length
@@ -675,21 +664,11 @@ def main():
     # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.map
 
     with training_args.main_process_first(desc="grouping texts together"):
-        if not data_args.streaming:
-            lm_datasets = tokenized_datasets.map(
-                group_texts,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc=f"Grouping texts in chunks of {block_size}",
-            )
-            print('> > > Text grouped, normal dataset')
-        else:
-            lm_datasets = tokenized_datasets.map(
-                group_texts,
-                batched=True,
-            )
-            print('> > > Text grouped, streaming dataset')
+        lm_datasets = tokenized_datasets.map(
+            group_texts,
+            batched=True,
+        )
+        print('> > > Text grouped, streaming dataset')
 
     if training_args.do_train:
         if "train" not in tokenized_datasets:
@@ -833,5 +812,3 @@ python gpt2_train.py \
 '''
 if __name__ == "__main__":
     main()
-
-
