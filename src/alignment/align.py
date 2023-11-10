@@ -10,7 +10,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-def alginment_with_diversity_coefficient(dataset_target,
+def alignment_with_diversity_coefficient(dataset_target,
                                         dataset_source,
                                         map_target: callable, 
                                         map_source: callable,
@@ -18,7 +18,7 @@ def alginment_with_diversity_coefficient(dataset_target,
                                         tokenizer = None,
                                         batch_size: int = 512,
                                         num_batches: int = 100, 
-                                        seed = 0, 
+                                        seed: int = 42,     # Switched seed from 0 -> 42
                                         buffer_size: int = 500_000, 
                                         distance = 'cosine',
                                         verbose: bool = False,
@@ -47,7 +47,7 @@ def alignment_task2vec(dataset_target,
                         probe_network: nn.Module,
                         tokenizer = None,
                         batch_size: int = 1024,
-                        seed: int = 0, 
+                        seed: int = 42,    # Switched seed from 0 -> 42
                         buffer_size: int = 500_000, 
                         distance = 'cosine',
                         verbose: bool = False,

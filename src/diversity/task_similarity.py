@@ -14,10 +14,14 @@
 # language governing permissions and limitations under the License.
 
 import itertools
+from typing import Tuple
+
 import scipy.spatial.distance as distance
 import numpy as np
 import copy
 import pickle
+
+# import uutils
 
 _DISTANCES = {}
 
@@ -342,9 +346,9 @@ def plot_multi_distance_matrix_from_distance_matrix_list(distance_matrix_lst, ti
 ## LLM DIV       
 def stats_of_distance_matrix(distance_matrix: np.ndarray,
                              remove_diagonal: bool = True,
-                             variance_type: str = 'ci_0.95',
+                             variance_type: str = 'std',    # TODO: was ci_0.95. Changed to rid uutils call
                              get_total: bool = False,
-                             ) -> tuple[float, float]:
+                             ) -> Tuple[float, float]:
     if remove_diagonal:
         # - remove diagonal: ref https://stackoverflow.com/questions/46736258/deleting-diagonal-elements-of-a-numpy-array
         triu: np.ndarray = np.triu(distance_matrix)
@@ -359,31 +363,37 @@ def stats_of_distance_matrix(distance_matrix: np.ndarray,
     # - compute stats of distance matrix
     if variance_type == 'std':
         mu, var = distance_matrix.mean(), distance_matrix.std()
-    elif variance_type == 'ci_0.95':
-        from uutils.torch_uu.metrics.confidence_intervals import mean_confidence_interval
-        mu, var = mean_confidence_interval(distance_matrix, confidence=0.95)
+    # elif variance_type == 'ci_0.95':
+    #     from uutils.torch_uu.metrics.confidence_intervals import mean_confidence_interval
+    #     mu, var = mean_confidence_interval(distance_matrix, confidence=0.95)
     else:
         raise ValueError(f'Invalid variance type, got: {variance_type=}')
 
     # - double checks the mean was computed corrects. Since it's symmetric the mean after removing diagonal should be equal to just one side of the diagonals
     if remove_diagonal:
-        from uutils.torch_uu import approx_equal
-        assert approx_equal(triu.sum(), tril.sum(), tolerance=1e-4), f'Distance matrix is not symmetric, are you sure this is correct?'
-        assert approx_equal(distance_matrix.mean(), triu[triu != 0.0].mean(), tolerance=1e-4), f'Mean should be equal to triangular matrix'
-        assert approx_equal(mu, triu[triu != 0.0].mean(), tolerance=1e-4)
-        
+        # from uutils.torch_uu import approx_equal
+        # assert approx_equal(triu.sum(), tril.sum(), tolerance=1e-4), f'Distance matrix is not symmetric, are you sure this is correct?'
+        # assert approx_equal(distance_matrix.mean(), triu[triu != 0.0].mean(), tolerance=1e-4), f'Mean should be equal to triangular matrix'
+        # assert approx_equal(mu, triu[triu != 0.0].mean(), tolerance=1e-4)
+
+        print('Lower tri sum', tril.sum(), ' / Upper tri sum', triu.sum(), '| These should be approx equal!!')
+        print('Total mean', distance_matrix.mean(), ' / Upper mean', triu[triu != 0.0].mean(), ' / Lower mean', tril[tril != 0.0].mean(), '| These should all be approx equal!!')
+        print('mu (div coefficient)', mu, ' / Upper mean', triu[triu != 0.0].mean(), '| These should all be approx equal!!')
+
     if get_total:
         total = distance_matrix.sum()
         return mu, var, total
     else:
         return mu, var
 
+
 def stats_cross_distance_matrix(distance_matrix: np.ndarray,
                                 remove_diagonal: bool = False,
-                                variance_type: str = 'ci_0.95',
+                                variance_type: str = 'std',     # TODO: was ci_0.95. Changed to rid uutils call
                                 get_total: bool = False,
-                                ) -> tuple[float, float]:
+                                ) -> Tuple[float, float]:
     return stats_of_distance_matrix(distance_matrix, remove_diagonal=remove_diagonal, variance_type=variance_type, get_total=get_total)
+
 
 def plot_histogram_of_distances(distance_matrix: np.ndarray, title, show_plot=True, save_file=None, bins_width=None, grid=True):
     import matplotlib.pyplot as plt
