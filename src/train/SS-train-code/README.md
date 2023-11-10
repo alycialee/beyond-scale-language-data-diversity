@@ -74,7 +74,23 @@ Hence, the important decisions for training were:
 
 **Works on SNAP?**: Yes (assumed, nothing much you can mess up here)
 
+
+
+
+
+
+**gpt2_eval.py**
+-
+**Desc**: Script for evaluating a HF trainer checkpoint (i.e. a model) on a given HF dataset. Currently configured to calculate the following metrics: cross-entropy loss, perplexity, accuracy. Details on using the script, command templates, etc. can be found in multi-line comments in the script.
+
+**Tested?**: Yes (fairly thoroughly).
+
+**Works on SNAP?**: Yes (did basic test).
+
+
+
+
 Other files
 -
-Inference pipeline and Evaluation pipeline have not yet been tested/refined--should only take a day or two more, currently working on this. Will update this heading with progress [10/25]
+Inference pipeline is left unimplemented. Pretty easy to implement if need be, but don't currently see a good reason to. All core scripts needed for training and evaluation are implemented and v1 tested. Feel free to let me something else you'd like to see! [11/10]
 
