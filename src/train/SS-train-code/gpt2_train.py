@@ -738,7 +738,8 @@ def main():
         max_train_samples = (
             training_args.max_steps if training_args.max_steps is not None else len(train_dataset)
         )
-        metrics["train_samples"] = max_train_samples
+        # metrics["train_samples"] = max_train_samples
+        metrics["max_train_samples_set"] = max_train_samples
 
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)

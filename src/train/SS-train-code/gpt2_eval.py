@@ -9,8 +9,6 @@ from typing import Optional
 from pprint import pprint as pp
 import tqdm
 import time
-import matplotlib
-from matplotlib import pyplot as plt
 import numpy as np
 
 import datasets
@@ -18,6 +16,7 @@ import evaluate
 import torch
 from datasets import load_dataset, interleave_datasets
 from evaluate import evaluator
+import json
 
 import transformers
 from transformers import (
@@ -52,17 +51,13 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 '''
 Important arguments in ModelArguments: 
-- 'model_dir': path/to/checkpoint/folder / specifies path to checkpoint folder of the model you want to evaluate
 '''
 @dataclass
 class ModelArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune, or train from scratch.
     """
-    model_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "Folder from which to load model checkpoint anc config for evaluation"},
-    )
+
     model_name_or_path: Optional[str] = field(
         default=None,
         metadata={
@@ -139,6 +134,7 @@ class ModelArguments:
 
 '''
 Important arguments in DataTrainingArguments: 
+- 'model_dir': path/to/checkpoint/folder / specifies path to checkpoint folder of the model you want to evaluate
 - 'dataset_name': e.g. 'EleutherAI/pile' / specifies HF dataset address of eval data
 - 'dataset_config_name': e.g. 'pubmed', 'pubmed+uspto' / specifies subset of above dataset. Using '+' between subsets interleaves the datasets given a mix (default equal-parts mixture)
 - 'max_eval_samples': same idea as above
@@ -161,6 +157,10 @@ class DataTrainingArguments:
     dataset_split: Optional[str] = field(
         default='validation', metadata={"help": "The split name of the dataset to use (via the datasets library)."}
     )
+    model_dir: Optional[str] = field(
+        default=None,
+        metadata={"help": "Folder from which to load model checkpoint anc config for evaluation"},
+    )
     train_file: Optional[str] = field(default=None, metadata={"help": "The input training data file (a text file)."})
     validation_file: Optional[str] = field(
         default=None,
@@ -176,7 +176,7 @@ class DataTrainingArguments:
         },
     )
     max_eval_samples: Optional[int] = field(
-        default=100,
+        default=None,
         metadata={
             "help": (
                 "For debugging purposes or quicker training, truncate the number of evaluation examples to this "
@@ -215,7 +215,11 @@ class DataTrainingArguments:
         default=None,
         metadata={"help": "The total number of examples to be seen per batch during training. Overrides per_device_train_batch_size."},
     )
-
+    data_mix: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The percentage of the interleaved dataset composed by the corresponding sub-dataset (applied in same order as dataset_config_name)."},
+    )
 
     def __post_init__(self):
         if self.streaming:
@@ -279,15 +283,14 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, **tokenizer_kwargs)
 
     config = CONFIG_MAPPING[model_args.model_type]()
-    config = config.from_json_file(model_args.model_dir+'/config.json')
+    config = config.from_json_file(data_args.model_dir+'/config.json')
     print(config)
 
     model = AutoModelForCausalLM.from_config(config)
     n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
     print('model param count:', n_params)
 
-    model.load_state_dict(
-        torch.load(model_args.model_dir + '/pytorch_model.bin', map_location='cuda' if torch.cuda.is_available() else 'cpu'))
+    model.load_state_dict(torch.load(data_args.model_dir + '/pytorch_model.bin', map_location='cuda' if torch.cuda.is_available() else 'cpu'))
 
     model.eval()
 
@@ -432,7 +435,15 @@ def main():
 
     # Preprocessing the datasets.
     # First we tokenize all the texts.
-    column_names = list(raw_datasets["validation"].features)
+    if raw_datasets["validation"].features is not None:
+        column_names = list(raw_datasets["validation"].features)
+    else:
+        # Edge case where .features doesn't work (don't currently know why)
+        column_names = ['text']
+        # Takes care of suolyer datasets where .features returns None, but has 1 columns in addition to 'text' that needs to be removed
+        if 'suolyer' in data_args.dataset_name and 'pile_' in data_args.dataset_name:
+            print('Getting rid of \'meta\' column, SUOLYER\'s datasets special case')
+            column_names.append('meta')
     text_column_name = "text" if "text" in column_names else column_names[0]
     print('> > > Gotten column names')
 
@@ -507,8 +518,9 @@ def main():
     if "validation" not in tokenized_datasets:
         raise ValueError("--do_eval requires a validation dataset")
     eval_dataset = lm_datasets["validation"]
+
     max_eval_samples = data_args.max_eval_samples
-    eval_dataset = eval_dataset.take(max_eval_samples)
+    eval_dataset = eval_dataset.take(max_eval_samples) if max_eval_samples is not None else eval_dataset
 
     def preprocess_logits_for_metrics(logits, labels):
         if isinstance(logits, tuple):
@@ -549,7 +561,7 @@ def main():
         # Note: running .evaluate() doesn't currently have a progress bar, so output will be 'blank' until evaluation is finished.
         metrics = trainer.evaluate()                # Source code: https://github.com/huggingface/transformers/blob/v4.35.0/src/transformers/trainer.py#L2974
 
-        metrics["eval_samples"] = max_eval_samples
+        metrics["max_eval_samples_set"] = max_eval_samples
         try:
             perplexity = math.exp(metrics["eval_loss"])
         except OverflowError:
@@ -558,18 +570,29 @@ def main():
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
+        with open(training_args.output_dir + "/train_args.json", "w") as f:
+            json.dump(training_args.to_dict(), f, indent=4)
+        key_data_args_dict = {
+            'model_dir': data_args.model_dir,
+            'dataset_name': data_args.dataset_name,
+            'dataset_config_name': data_args.dataset_config_name,
+            'dataset_split': data_args.dataset_split,
+            'data_mix': data_args.data_mix,
+            'max_eval_samples': data_args.max_eval_samples,
+            'streaming': data_args.streaming,
+        }
+        with open(training_args.output_dir + "/data_args.json", "w") as f:
+            json.dump(key_data_args_dict, f, indent=4)
 
 
 '''
 conda activate train_test1
-python src_div_emergence_icl/experiment_model_training/eval_test_trainer.py --output_dir ./scrap_results2 --overwrite_output_dir True --do_eval True --optim adamw_torch --config_overrides n_embd=512,n_layer=8,n_head=8
-
 
 python gpt2_eval.py \
 --output_dir eval-scrap1 \
 --model_dir ../checkpoint-20000-pubmed-50M \
 --do_eval \
---max_eval_samples 10 \
+--max_eval_samples 500000 \
 --save_steps 2000 \
 --optim adamw_torch \
 --dataset_config_name pubmed \
@@ -581,12 +604,56 @@ python gpt2_eval.py \
 --output_dir eval-scrap1 \
 --model_dir ../checkpoint-20000-pubmed-50M \
 --do_eval \
---max_eval_samples 10 \
+--max_eval_samples 500000 \
+--save_steps 2000 \
+--optim adamw_torch \
+--dataset_name suolyer/pile_openwebtext2 \
+--streaming True \
+
+
+python gpt2_eval.py \
+--output_dir eval-scrap1 \
+--model_dir ../checkpoint-20000-pubmed-50M \
+--do_eval \
+--max_eval_samples 500000 \
+--save_steps 2000 \
+--optim adamw_torch \
+--dataset_name suolyer/pile_hackernews \
+--streaming True \
+
+
+python gpt2_eval.py \
+--output_dir eval-scrap1 \
+--model_dir ../checkpoint-20000-pubmed-50M \
+--do_eval \
+--max_eval_samples 500000 \
+--save_steps 2000 \
+--optim adamw_torch \
+--dataset_name roneneldan/TinyStories \
+--streaming True \
+
+python gpt2_eval.py \
+--output_dir eval-scrap1 \
+--model_dir ../checkpoint-20000-pubmed-50M \
+--do_eval \
+--max_eval_samples 500000 \
 --save_steps 2000 \
 --optim adamw_torch \
 --dataset_name wikitext \
+--streaming True \
 --dataset_config_name wikitext-103-v1 \
+
+python gpt2_eval.py \
+--output_dir eval-scrap1 \
+--model_dir ../checkpoint-20000-pubmed-50M \
+--do_eval \
+--max_eval_samples 500000 \
+--save_steps 2000 \
+--optim adamw_torch \
+--dataset_name SkyLion007/openwebtext \
+--dataset_split train \
 --streaming True
+
 '''
 if __name__ == "__main__":
     main()
