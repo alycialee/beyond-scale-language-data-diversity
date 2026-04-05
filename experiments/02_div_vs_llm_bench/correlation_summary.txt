@@ -1,0 +1,39 @@
+Diversity Coefficient vs. Benchmark Soft Metrics — Summary
+
+============================================================
+
+
+
+--- log P(correct) (all 27 models) ---
+  y = -44.8170x + 1.0129
+  R² = 0.0651
+  Pearson  r = -0.2552  (p=1.99e-01)
+  Spearman ρ = -0.1733  (p=3.87e-01)
+  Kendall  τ = -0.1212  (p=4.34e-01)
+
+  Per-family breakdown:
+    GPT2-1.5B     n=3  R²=0.079  Pearson=-0.280  Spearman=-0.500
+    GPT2-117M     n=3  R²=0.144  Pearson=-0.379  Spearman=-0.500
+    GPT2-204M     n=3  R²=0.066  Pearson=-0.256  Spearman=0.000
+    GPT2-345M     n=3  R²=0.161  Pearson=-0.402  Spearman=-0.500
+    GPT2-51M      n=6  R²=0.092  Pearson=0.303  Spearman=0.478
+    GPT2-810M     n=2  R²=n/a(<3pts)  Pearson=1.000  Spearman=1.000
+    LLaMA2-7B     n=7  R²=0.472  Pearson=-0.687  Spearman=-0.598
+
+--- log P(correct) - mean log P(incorrect) (all 27 models) ---
+  y = 0.0832x + -0.0547
+  R² = 0.0016
+  Pearson  r = 0.0405  (p=8.41e-01)
+  Spearman ρ = 0.0378  (p=8.52e-01)
+  Kendall  τ = 0.0381  (p=8.06e-01)
+
+  Per-family breakdown:
+    GPT2-1.5B     n=3  R²=0.094  Pearson=-0.306  Spearman=-0.500
+    GPT2-117M     n=3  R²=0.742  Pearson=0.861  Spearman=0.500
+    GPT2-204M     n=3  R²=0.066  Pearson=-0.256  Spearman=0.000
+    GPT2-345M     n=3  R²=0.086  Pearson=-0.294  Spearman=-0.500
+    GPT2-51M      n=6  R²=0.018  Pearson=-0.135  Spearman=0.000
+    GPT2-810M     n=2  R²=n/a(<3pts)  Pearson=1.000  Spearman=1.000
+    LLaMA2-7B     n=7  R²=0.021  Pearson=-0.145  Spearman=-0.060
+
+--- Accuracy: NO DATA ---

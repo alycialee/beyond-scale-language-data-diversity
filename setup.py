@@ -31,8 +31,9 @@ setup(
     long_description_content_type="text/markdown",
     url='https://github.com/alycialee/beyond-scale-language-data-diversity',
     author='Alycia Lee & Brando Miranda',
-    author_email='alylee15@stanford.edu',
-    python_requires='>=3.10.11',
+    author_email='brando9@cs.stanford.edu',
+    # python_requires='>=3.10.11',
+    python_requires='>=3.11',
     license='Apache 2.0',
 
     # currently
@@ -41,31 +42,94 @@ setup(
 
     # for pytorch see doc string at the top of file
     install_requires=[
+        'fire',
+        'dill',
+        # 'networkx>=2.5',
+        'scipy',
         'scikit-learn',
+        'lark-parser',
+        'tensorboard',
         'pandas',
+        'progressbar2',
+        'requests',
+        'aiohttp',
         'numpy',
         'plotly',
         'wandb',
         'matplotlib',
+        'nvidia-htop',
+        'openai',
+        'anthropic',
+        'jsonlines',
+        # 'statsmodels'
+        # 'statsmodels==0.12.2'
+        # 'statsmodels==0.13.5'
+        # - later check why we are not installing it...
         'seaborn',
-
-        'torch',
-        'torchvision',
-        'torchaudio',
-        'fairseq',
-        
+        # 'nltk'
+        'twine',
+        'dspy-ai',
+        'ragatouille',
+        # 'torch',  # here so it's there for default but if using vllm see bellow or readme.md
+        # 'torchvision',
+        # # 'torchaudio',
+        'trl',
         'transformers',
+        'peft',
+        'accelerate',
         'datasets',
-
-        'zstandard',  # needed for eval of all the pile
-
+        'bitsandbytes',
+        'evaluate',
+        'einops',
         'sentencepiece', # needed llama2 tokenizer
+        # 'zstandard', # needed for eval of all the pile
 
-        # 'trl',
-        # 'peft',
+        # def does not work for mac
+        # # -- ref: https://github.com/vllm-project/vllm/issues/2747 
+        # pip install torch==2.2.1
+        # pip install vllm==0.4.1
+        # 'torch==2.2.1',
+        # 'vllm==0.4.1', 
+        # # --
 
+        # # mercury: https://github.com/vllm-project/vllm/issues/2747
+        # 'dspy-ai',
+        # # 'torch==2.1.2+cu118',  # 2.2 net supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # 'torch==2.2.2',  # 2.2 net supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # # 'torchvision',
+        # # 'torchaudio',
+        # # 'trl',
+        # 'transformers',
+        # 'accelerate',
+        # # 'peft',
+        # # 'datasets==2.18.0', 
+        # 'datasets',  
+        # 'evaluate', 
         # 'bitsandbytes',
+        # # 'einops',
+        # # 'vllm==0.4.0.post1', # my gold-ai-olympiad project uses 0.4.0.post1 ref: https://github.com/vllm-project/vllm/issues/2747
+
+        # # ampere
+        # 'dspy-ai',
+        # # 'torch==2.1.2+cu118',  # 2.2 not supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # # 'torch==2.1.2',  # 2.2 not supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # # 'torch==2.2.1',  # 2.2 not supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # 'torch==2.2.1',  # 2.2 not supported due to vllm see: https://github.com/vllm-project/vllm/issues/2747
+        # # 'torchvision',
+        # # 'torchaudio',
+        # # 'trl',
+        # # 'transformers==4.39.2',
+        # 'transformers>=4.40',
+        # 'accelerate==0.29.2',
+        # # 'peft',
+        # # 'datasets==2.18.0', 
+        # 'datasets==2.14.7',  
+        # 'evaluate==0.4.1', 
+        # 'bitsandbytes== 0.43.0',
         # 'einops',
+        # 'flash-attn>=2.5.8',
+        # 'vllm==0.4.1', # my gold-ai-olympiad project uses 0.4.0.post1 ref: https://github.com/vllm-project/vllm/issues/2747
+        # # pip install -q -U google-generativeai
     ]
 )
 

@@ -80,7 +80,7 @@ def get_diversity_coefficient(dataset,
     div_coeff, div_coeff_ci = task_similarity.stats_of_distance_matrix(distance_matrix)
 
     # -- Return results
-    results: dict = {'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci,
+    results : dict = {'div_coeff': div_coeff, 'div_coeff_ci': div_coeff_ci,
                     'embeddings': embeddings,
                     'distance_matrix': distance_matrix,
                     'losses': losses,

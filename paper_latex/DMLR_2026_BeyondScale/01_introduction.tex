@@ -1,0 +1,65 @@
+\section{Introduction}
+
+\label{introduction}
+% SS's version of paper: https://www.overleaf.com/1745433387ggqnstcvcpcc#08618e
+Current trends in pre-training Large Language Models (LLMs) tend to concentrate on model and dataset size scaling \cite{chowdhery2022palm, nostalgebraist2022chinchilla, gpt4, google2023palm2}.
+Therefore, vast amounts of effort have been invested in understanding neural scaling laws---the power-law relationship between the loss of artificial deep networks and the \textit{size} of the pre-training dataset for a fixed compute budget \citep{hestness2017deep,rosenfeld2019constructive,henighan2020scaling,kaplan2020scaling,gordon2021data,hernandez2021scaling,jones2021scaling,zhai2022scaling,hoffmann2022training, clark2022unified, neumann2022scaling}.
+In addition, recent work focuses on training a fixed-size model but using very large, trillion-token datasets \citep{llama, llamav2}.
+However, the effectiveness of these systems also fundamentally relies on the quality \cite{longpre2023pretrainer}, variability and coverage of the pre-training data \cite{tatsu, david2010impossibility} and not only the \textit{size}. 
+In particular, the richness and variety of data, otherwise known as data diversity, is a key aspect of data quality that plays an important role in researchers' and practitioners' choice of pre-training corpora for general capabilities \citep{thepile, gpt3, llama, eldan2023tinystories, gunasekar2023textbooks}. 
+In other words, diverse data is high quality data when your goal is to instill \textit{general capabilities} in a model. 
+% Inspired from the NTL, define diverse dataset is high quality because it should be for general human capabilities.
+
+
+
+% \textsuperscript{1}Department of Computer Science, Stanford University, Palo Alto, USA \\
+% \textsuperscript{*}Equal contribution. Corresponding authors: \texttt{alylee15@stanford.edu}, \texttt{brando9@stanford.edu}
+
+In addition, experimental settings demonstrate that the level of variety and diversity in pre-training data is likely a strong causal factor in the development of in-context learning (ICL) in LLMs, an essential component of the versatility and generality of LLMs \citep{xie2022explanation, shin2022effect, chan2022data}. 
+% Unfortunately, however, data quality, diversity and coverage \cite{david2010impossibility} are often overlooked or discussed in vague and imprecise ways \cite{longpre2023pretrainer}. 
+However, data quality, diversity and coverage \cite{david2010impossibility} are often discussed in vague and imprecise ways \cite{longpre2023pretrainer}. 
+Even in instances of quantitative approaches to data quality, methods are often not interpretable as to \textit{why} certain datasets are preferable over others, or require reference corpora and, thereby, limit the diversity of resulting datasets \citep{xie2023doremi, xie2023data}. 
+Hence, we propose to ground the discussion of data quality and, in particular, data diversity, through the Task2Vec \textit{diversity coefficient for natural language}---a metric using the expected distance between Task2Vec embeddings of data batches \citep{task2vec, curse_low_div} to quantify the level of structural and semantic diversity of natural language data, allowing researchers and practitioners to move beyond scale alone.
+% Hence, we propose to ground the discussion of data quality through the diversity coefficient \cite{curse_low_div}, a data coverage metric that moves beyond scale alone.
+% We extend the diversity coefficient to formally quantify data diversity of publicly available datasets and discover that LLMs are pre-trained on formally diverse data.
+% We demonstrate the diversity coefficient is \textit{high} for these pre-training datasets by comparing their formal diversity to conceptually well-motivated lower and upper bounds of the diversity coefficient. 
+% In addition, to instill confidence in the usage of the diversity coefficient, we assess the interpretability of the coefficient as it relates to intuitive and expected properties of such a diversity metric.
+
+% Concretely, our \textbf{key contributions} are:
+% \begin{enumerate}
+%     \item The diversity coefficient increases as one concatenates more pre-training datasets of different sources.
+% %[alycia's wisker plots of single vs concts of two datasets]
+%     \item We show the task embedding distances used in the diversity coefficient groups in a meaningful way, reflecting the conceptual and semantic information humans expect.
+% %[pile histogram and MIO vision data set]
+%     \item Using the Generative IN-Context Learning (GINC) \cite{ginc} dataset, we show that as the number of latent concepts\footnote{Latent concepts represent document-level features such as semantics, structure, and style \cite{ginc}.} increases the diversity coefficient increases.
+% %[correlation plot div vs latent concept, and new one with lots of line, note we have to decide if we need that many plots to make our point, we can reference additional evidence/plots in the appendix]
+%     \item We show that a larger, more diverse vocabulary leads to a higher diversity coefficient in the Generative IN-Context Learning (GINC) \cite{ginc} dataset.
+% %[correlation plot div vs vocab, and new one with lots of lines]
+% %In addition, we recap and emphasizes that the diversity coefficient has been shown to correlate with the ground truth diversity of synthetic datasets when available.
+% \end{enumerate}
+
+Hence, our key \textbf{contributions} are:
+\begin{enumerate}
+    \item \textit{A paradigm shift beyond dataset scale} to a data-centric machine learning perspective through a quantitative data diversity metric for data variability---the \textbf{diversity coefficient}.
+    \item We advance discussions on data quality by developing an interpretable and formal quantitative measure of an important aspect of data quality---data diversity---in the form of the Task2Vec \textit{diversity coefficient for natural language}.
+    \item We demonstrate that the diversity coefficient aligns with human intuitions about variability and diversity through interpretability and relationship analyses.
+    % To confirm the effectiveness of the diversity coefficient as a measure of diversity, we conducted interpretability analyses and relationship tests. 
+    % These tests compared the coefficient's properties to expected diversity properties that are consistent with human intuitions,
+    For example, if 
+    % such as the fact that the distance between Task2Vec embeddings used by the coefficient reflect intuitive human notions of data similarity based on format and semantics, 
+    % the coefficient increases as more datasets are concatenated, 
+    the number of latent concepts increases, a richer vocabulary is used, or datasets are concatenated, then the diversity coefficient should increase.
+    \item We quantitatively demonstrate that public datasets for LLM pre-training exhibit \textit{high} diversity, by them to well-motivated lower and upper bounds for our diversity metric.
+    % \item Lastly, for ease of use of our method, we also study properties of different parameters for computing the formal diversity and therefore provide practitioners with simpler ways to evaluate the diversity coefficient.
+    \item We provide evidence via \textbf{interventional} experiments with various GPT-2 and LLaMAv2 models that pre-training models on data with higher diversity coefficients leads to better downstream performance on language modeling for diverse evaluation corpora---totaling 44 models pre-trained from scratch of various sizes (54M  to 7B).
+    % Finally, we conduct a comprehensive set of controlled \textit{interventional} experiments with GPT-2 and LLaMAv2 that demonstrates the diversity coefficient of pre-training data is a meaningful driver of downstream model evaluation performance---totaling 33 models trained of various sizes (54M  to 7B).
+\end{enumerate}
+
+We conclude that the diversity coefficient serves as an effective measure of the diversity of natural language data and, thus, enables researchers and practitioners to more rigorously study this aspect of natural language data quality and \textit{move beyond scale alone}. 
+% We hope this work inspires more systematic and effective techniques for dataset design beyond simply increasing the number of data points, sequences, or tokens. 
+% Therefore, we conclude the diversity coefficient is reliable, and conjecture the diversity coefficient can be used to build quality diverse datasets for capable LLMs. 
+% In doing so, we hope this work inspires more systematic and effective techniques for dataset design beyond simply increasing the number of data points, sequences, or tokens.
+% [TO-DO If paper has appendices, submit appendix with main body and references as single file. 8 pages excluding references and appendices]
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,0 +1,67 @@
+\section{Discussion}
+Our work extends, examines, and thus validates the application of the Task2Vec diversity coefficient to a new modality---natural language---and demonstrates that open LLMs are pre-trained on formally diverse data.
+% Through an extensive set of experiments that verifies intuitive properties of a diversity metric, we instill confidence in the diversity coefficient method, and therefore effectively formalize the concept of data diversity.
+% Our conceptually well-motivated lower and upper bounds on the diversity coefficient aid in the understanding of the magnitude of the diversity coefficient.
+% Although the bounds we propose only apply to sequence data with a symbolic vocabulary, using a multi-modal embedding method (e.g. a multi-modal probe network) can easily address this limitation.
+
+One potential limitation of our method is the need for a data representation. 
+Although the requirement for a data representation might seem restrictive, we argue that it is an inherent aspect of data processing.
+Choosing symbols (e.g., one-hot vectors), raw pixels, etc. \textbf{is} a choice of data representation.
+We suggest deep learning representations due to their overwhelming success in machine learning, e.g. in computer vision \citep{alexnet, resnet}, natural language processing \citep{bert, gpt3, chowdhery2022palm, gpt4, google2023palm2}, game playing \citep{alphago, atari1, EfficientZero}, theorem proving \citep{skiptree, gptf, pact}, code \citep{codex} and more.
+In addition, widely available open-source pre-trained models (e.g. CLIP \citep{clip}, LLaMA \citep{llama}, etc.) have made choosing a good embedding method easier. Another potential limitation of the diversity coefficient is the need to fine-tune a probe-network. Though this does introduce some computational overhead, it is relatively small (fine-tuning only the final layer) and outweighed by the utility of using information-rich Task2Vec embeddings. %and since compute requirements do \textit{not} necessarily scale with dataset size, we believe the small cost of the compute overhead is much outweighed by the richness of Task2Vec embeddings in representing the informational content of a text batch. 
+% In addition, we explore random networks and models with no fine-tuning, to make our method more accessible \ref{appendix:div_parameters}.
+% We hypothesize that as long a consistent model/method is used to create the task embeddings, the exact model might not play a crucial role---because we only need comparable distances that depend on the data/task. 
+
+% Importantly, the relationship between pre-training dataset diversity and test performance remains a key question.
+% % We observe a negative correlation between diversity and perplexity, i.e., an increase in diversity correlates with a decrease in perplexity---indicating a positive relationship between diversity and model performance (although the perplexity values are large). Therefore, we conjecture diversity improves test performance on general tasks.
+% To investigate, we conduct preliminary experiments, pre-training three GPT-2 models on datasets of varying diversities, then evaluate their performance on diverse validation datasets.
+% % We observe in table \ref{tab:div_vs_ppl} a negative correlation between diversity and perplexity, i.e., an increase in diversity correlates with a decrease in perplexity---indicating a positive relationship between diversity and model performance (although the perplexity values are large). 
+% We observe in Table \ref{tab:div_vs_ppl} that increased diversity leads to decreased cross-entropy loss, indicating a positive relationship between diversity and model performance on diverse tasks. Although the cross-entropy values are arguably large, Figure \ref{fig:outputs_are_good_despite_high_loss} shows that models were still pre-trained enough to grasp important aspects of sentence syntax and structure of their respective dataset, indicating model performance on evaluation represents meaningful improvements in ability. 
+% Hence, we conjecture pre-training on higher diversity data improves test performance on diverse tasks, though more extensive experiments are needed to know so conclusively.
+% % However, this type of experiment is challenging because pre-training an LLM at scale is expensive---more than 10M dollars \cite{ruiz2023train}.
+
+% Data has taken a central role in the success of modern machine learning methods, like GPT4 \cite{gpt4}, CLIP \cite{clip}, and PaLM 2 \cite{google2023palm2}, with special relevance for architectures with few inductive biases, like the popular Transformer \citep{vaswani2017attention}.
+% Therefore, it is paramount to understand the pretraining data we use, beyond scale alone.
+% We conclude the diversity coefficient is a trustworthy metric, and conjecture the diversity coefficient can be used to build quality, diverse datasets for LLMs.
+% We hope our contributions inspire more effective data collection and curation in machine learning that goes beyond scale alone to improve performance. 
+
+% - Implication, Impact
+% 	- Given the few inductive biases in Transformers and the central role in high performance on data on modern ML models.
+% 	- Therefore, it has become paramount to understand the quality and diversity of the data we train these models.
+% 	- We ground this discussion by extensively testing a concrete data diversity metric.
+% 	- We hope our contributions inspire more effective data collection, curation processes in machine learning that goes beyond scale alone and improve performance. 
+% 	- This work, thus, lays a foundation for a more reliable discussion on data diversity in terms of data quality.
+
+% LLMs are pre-trained on vast text corpora from diverse sources, and possess the remarkable abilities to perform downstream tasks not explicitly trained for. 
+%We show that large language models (LLMs) are pre-trained on highly diverse data sets, and find that the diversity coefficient correlates with intuitive measures of diversity, such as the number and types of data sources. 
+
+% \section{Conclusion}
+% We extend the Task2Vec diversity coefficient as a measure of dataset diversity, an aspect of data quality, and provide a use case in showing that LLM pre-training datasets are formally diverse.
+% To build confidence in the diversity coefficient, we demonstrate that the coefficient corresponds to intuitive notions of dataset diversity, such as the amount and heterogeneity of dataset sources, number of latent concepts, and richer vocabulary. 
+% Thus, we conclude that the diversity coefficient is a trustworthy measure of dataset diversity, and recommend its usage for assessing and designing high quality, diverse datasets for powerful and performant LLMs. 
+%We hope this work motivates further development and usage of quantitative techniques for dataset generation and analysis---beyond sheer and blind scale in number of sequences.
+
+%We study the relationship between the diversity coefficient and GINC dataset parameters that characterize the LM pre-training data distribution. 
+%These parameters include number of latent concepts and vocabulary size. 
+%These results show that combining batches from two different datasets computes a higher diversity. This aligns with our expectation that combining data from different sources increases the diversity of the data overall.
+
+% Therefore, we conclude the diversity coefficient is reliable,
+% and conjecture the diversity coefficient can be used to build
+% quality diverse datasets for capable LLMs. In doing so,
+% we hope this work inspires more systematic and effective
+% techniques for dataset design beyond simply increasing the
+% number of data points, sequences, or tokens.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsubsection*{Broader Impact Statement}
+% Optional for TMLR, add if desired
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsubsection*{Acknowledgments}
+% Use unnumbered third level headings for the acknowledgments. All
+% acknowledgments, including those to funding agencies, go at the end of the paper.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

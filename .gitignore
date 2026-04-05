@@ -164,3 +164,20 @@ cython_debug/
 
 # Ignore all .code-workspace files
 *.code-workspace
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Hugging Face model outputs and cache
+outputs/
+runs/
+.cache/
+*.bin
+*.h5
+
+# Ignore datasets (if they are large and not essential for version control)
+datasets/
+
+# images for expts
+avg_*.png
+*.svg

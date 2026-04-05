@@ -34,50 +34,31 @@ python -c "import torch; print(torch.bfloat16);"
 krbtmux
 reauth
 
-ssh brando9@ampere1.stanford.edu
-ssh brando9@hyperturing1.stanford.edu
-ssh brando9@hyperturing2.stanford.edu
 tmux ls
+tmux new -s 1
+reautexport CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')h
 
-tmux new -s rand
-tmux new -s rand0
-tmux new -s rand1
-tmux new -s rand2
-tmux new -s rand3
-tmux new -s rand4
-tmux new -s rand5
-tmux new -s rand6
-tmux new -s rand7
-tmux new -s rand8
-tmux new -s rand9
-tmux new -s rand10
-tmux new -s rand11
-tmux new -s rand12
-tmux new -s rand13
-tmux new -s rand14
-tmux new -s rand15
-tmux new -s rand16
-tmux new -s rand17
-tmux new -s rand18
-tmux new -s rand19
-tmux new -s rand20
-tmux new -s rand21
-tmux new -s rand22
-tmux new -s rand23
-tmux new -s rand24
-reauth
-
-# - Min setup code for ru
-reauth
-
-source $AFS/.bashrc.lfs
+source $AFS/.bashrc
 conda activate beyond_scale
-CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
+export CUDA_VISIBLE_DEVICES=6
 echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
+export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
+echo CUDA_VISIBLE_DEVICES = $CUDA_VISIBLE_DEVICES
+export HF_TOKEN=$(cat ~/keys/brandos_hf_token.txt)
+echo $HF_TOKEN
 
 # -- Run
-python ~/beyond-scale-language-data-diversity/src/diversity/div_coeff.py
+# python ~/beyond-scale-language-data-diversity/src/diversity/div_coeff.py
 
+export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
+python ~/beyond-scale-language-data-diversity/src/training/train.py
+
+# export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
+# python ~/beyond-scale-language-data-diversity/src/diversity/embeddings/div_act_based.py
+
+
+export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -k2 -nr | head -n 1 | awk -F ', ' '{print $1}')
+python ~/beyond-scale-language-data-diversity/src/training/eval.py
 
 # -- other option is to run `echo $SU_PASSWORD | /afs/cs/software/bin/reauth` inside of python, right?
 export JOB_PID=$!

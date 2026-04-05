@@ -1,0 +1,3 @@
+[submodule "Brando-LLM-Eval-Demo"]
+	path = Brando-LLM-Eval-Demo
+	url = https://github.com/brando90/Brando-LLM-Eval-Demo.git

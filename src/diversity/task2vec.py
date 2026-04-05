@@ -16,6 +16,8 @@ import math
 import random
 from abc import ABC, abstractmethod
 
+from copy import deepcopy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,15 +29,18 @@ from torch.utils.data import DataLoader, Dataset
 
 from diversity.utils import AverageMeter, get_error, get_device
 
-## LLM DIV
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+from pdb import set_trace as st
+
+# ## LLM DIV
+# def set_seed(seed):
+#     random.seed(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     torch.cuda.manual_seed_all(seed)
+# see from diversity.utils import seed_everything, decision, seed before the div/rel coeff computation
 
 ## LLM DIV
-def get_loss(logits: torch.tensor, targets: torch.tensor, ignore_index=None) -> torch.tensor:
+def get_lm_loss(logits: torch.tensor, targets: torch.tensor, ignore_index=None) -> torch.tensor:
     """
     Computes the cross-entropy loss for either sequence classification or generation.
     """
@@ -87,18 +92,23 @@ class ProbeNetwork(ABC, nn.Module):
 
 class Task2Vec:
 
-    def __init__(self, model: ProbeNetwork, skip_layers=0, max_samples=None, classifier_opts=None,
-                 method='montecarlo', method_opts=None, loader_opts=None, bernoulli=False, mode='autoregressive'): ## LLM DIV
-        if classifier_opts is None:
-            classifier_opts = {}
-        if method_opts is None:
-            method_opts = {}
-        if loader_opts is None:
-            loader_opts = {}
+    def __init__(self, model: ProbeNetwork, skip_layers=0, max_samples=None, classifier_opts={},
+                 method='montecarlo', method_opts={}, loader_opts={}, bernoulli=False, mode='autoregressive', 
+                 _deep_copy: bool = True, # safe calue is True to avoid updates to carry along across batches/datasets accidentally
+                 ): ## LLM DIV
+        """
+        Remark on _deep_copy:
+            _deep_copy=True ensures that updates across batches/data set are not accidentally carried along. If it's False and the two batches are from different datasets/tasks
+        then the Task2Vec representation will be signaling which param vectors are important for both tasks, which should reduce the accuracy of the method to compute the true
+        difference/similarity between the two batches/datasets. It will say which params are important for both tasks/datasetes/batches, which means your Task2Vec vector won't 
+        be a unique fingerprint/representation for the task/dataset/batch in question. If this is what you want then go ahead, but it's not BM's original intended use. 
+        """
         assert method in ('variational', 'montecarlo')
         assert skip_layers >= 0
 
-        self.model = model
+        self.model = deepcopy(model) if _deep_copy else model
+        if not _deep_copy:
+            print(f'Warning: {_deep_copy=} when False it means the model is accumulating updates across batches, which is not usually what we want to get unique representations of batches/tasks/data.')
         # Fix batch norm running statistics (i.e., put batch_norm layers in eval mode)
         self.model.train()
         self.device = get_device(self.model)
@@ -111,7 +121,7 @@ class Task2Vec:
         self.bernoulli = bernoulli
         self.mode = mode
         if self.mode == "autoregressive":
-            self.loss_fn = get_loss
+            self.loss_fn = get_lm_loss
         else:
             self.loss_fn = nn.CrossEntropyLoss() if not self.bernoulli else nn.BCEWithLogitsLoss()
             self.loss_fn = self.loss_fn.to(self.device)
@@ -124,17 +134,15 @@ class Task2Vec:
         if self.mode == "autoregressive":
             loss = None
             print(f'{self.classifier_opts=}')
-            if self.classifier_opts:  # is it something truthy? e.g., dict with something in it?
-                if self.classifier_opts.get('finetune', False):  # finetune only if specified True, else no finetuning if not specified or False. 
+            if self.classifier_opts: # if classifier_opts present then True and try to do FT 
+                if self.classifier_opts.get('finetune', False):
                     epochs = 0
                     print(f'Warning: classifier_opts doesnt specify finetune or break early, thus no finetuning is being done. See: {self.classifier_opts=} {epochs=}')
-                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
-                else:
-                    loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
-            else:  # self.classifier_opts might be None or {}
                 loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
-            print(f'{loss=} (after fine tune, if not done it will be None)')
-            assert loss is not None, f'Err: {loss=}'
+            else:  # self.classifier_opts might be None or {}
+                print(f'Warning {self.classifier_opts=} is likely None/empty, so hardcoding some defaults for FT.')
+                loss = self._finetune_classifier(dataset, loader_opts=self.loader_opts, classifier_opts=self.classifier_opts, max_samples=self.max_samples, epochs=epochs)
+            print(f'Final loss after FT: {loss=} (after FT, if None then no FT was done.)')
             self.compute_fisher(dataset)
             embedding = self.extract_embedding(self.model)
             return embedding, loss
@@ -158,44 +166,39 @@ class Task2Vec:
             return embedding
         
     ### LLM DIV 
-    def _finetune_classifier(self, dataset: Dataset, loader_opts: dict = None, classifier_opts: dict = None, max_samples=None, epochs = 5, learning_rate = 5e-5, adam_epsilon = 1e-8):
+    def _finetune_classifier(
+            self, 
+            dataset: Dataset, 
+            loader_opts: dict = {}, 
+            classifier_opts: dict = {}, 
+            max_samples=None, # needs to be here for now due to backward compatibility reasons
+            epochs = 5, 
+            learning_rate = 5e-5, 
+            adam_epsilon = 1e-8,
+            batch_size: int = 8,
+            weight_decay: float = 0.0001,
+            # verbose: bool = True,
+            leave_pbar_on_screen: bool = True, # if false removes pbar from screen
+            ):
         """Fits the last layer of the HuggingFace transformer probe network."""
-        logging.info("Finetune classifier...")
-        if loader_opts is None:
-            loader_opts = {}
-        if classifier_opts is None:
-            classifier_opts = {}
-        data_loader = DataLoader(dataset, shuffle=False, batch_size=loader_opts.get('batch_size', 8),
-                                 num_workers=loader_opts.get('num_workers', 0), drop_last=False)
-
         device = next(self.model.parameters()).device
-        print("MODEL DEVICE: ", device)
+
+        # Get dataloader per iteration (approx ceil(len(ds)/batch_size)))
+        data_loader = DataLoader(dataset, batch_size=loader_opts.get('batch_size', batch_size), num_workers=loader_opts.get('num_workers', 0))
         
-        # num_examples = int(classifier_opts.get("task_batch_size", 256) / loader_opts.get('batch_size', 8))
-        num_examples = len(list(data_loader))  # not ideal but it's quicker in dev time, usually we won't feed the entire data set to task2vec so this should be fine
-        n_batches = num_examples
-        
+        # Get params to optimize (we will only FT the head just like the original T2V did. Hypothesis is full body FT might lead to forgetting)
         optimizer_grouped_parameters = [
             {'params': [p for p in self.model.lm_head.parameters()],
-             'weight_decay': classifier_opts.get("weight_decay",0.0001)},
+             'weight_decay': classifier_opts.get("weight_decay", weight_decay)},
         ]
-        
         optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=classifier_opts.get("learning_rate",learning_rate), eps=classifier_opts.get("adam_epsilon",adam_epsilon))
-        
-        # Train!
-        logging.info("***** Running training *****")
-        # logging.info("  Num examples = %d", num_examples)
-        logging.info("  Num Epochs = %d", epochs)
-        logging.info("  Batch size = %d", loader_opts.get('batch_size', 8))
-        
-        train_iterator = trange(classifier_opts.get("epochs", epochs), desc="Epoch", leave=False)
-        set_seed(classifier_opts.get("seed", 42))  # Added here for reproductibility (even between python 2 and 3)
-        
+
+        # -- Start Training 
         self.model.train()
-        for epoch in train_iterator:
+        step, epoch, loss = None, None, torch.tensor(-1.0)
+        for epoch in tqdm(range(classifier_opts.get("epochs", epochs)), desc="Epoch step", leave=leave_pbar_on_screen):
             metrics = AverageMeter()
-            epoch_iterator = tqdm(data_loader, desc="Iteration", total=n_batches, leave=False)
-            for step, batch in enumerate(epoch_iterator):
+            for step, batch in tqdm(enumerate(data_loader), desc='Iter step', total=len(data_loader), leave=leave_pbar_on_screen):
                 optimizer.zero_grad()
                 inputs = {'input_ids': batch['input_ids'].to(device),
                         'attention_mask': batch['attention_mask'].to(device)}
@@ -205,12 +208,8 @@ class Task2Vec:
                 error = get_error(logits, inputs['input_ids'], ignore_index=50256)
                 loss.backward()
                 optimizer.step()
-                
                 metrics.update(n=batch['input_ids'].shape[0], loss=loss.item(), error=error)
-                epoch_iterator.update(1)
-                
                 if classifier_opts.get("break_early", False):
-                    print("----> breaking early")
                     break
             if classifier_opts.get("break_early", False):
                 break
@@ -488,7 +487,8 @@ class Task2Vec:
                     continue
                 # The other Fisher approximation methods directly approximate the hessian at the minimum
                 if hasattr(module, 'weight') and hasattr(module.weight, 'grad2_acc'):
-                    grad2 = module.weight.grad2_acc.cpu().detach().numpy()
+                    # grad2 = module.weight.grad2_acc.cpu().detach().numpy()
+                    grad2 = module.weight.grad2_acc.cpu().float().detach().numpy()
                     filterwise_hess = grad2.reshape(grad2.shape[0], -1).mean(axis=1)
                     hess.append(filterwise_hess)
                     scale.append(np.ones_like(filterwise_hess))

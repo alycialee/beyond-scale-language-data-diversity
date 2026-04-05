@@ -1,0 +1,11 @@
+\section{Related Work}
+Existing diversity metrics have concentrated on data produced by Generative Adversarial Networks (GANs) and involve variations of a precision- and recall-based framework originally proposed in \citep{sajjadi2018assessing} to measure quality and diversity, respectively \citep{kynkaanniemi2019improved, simon2019revisiting, naeem2020}. 
+Similar to our metric, these methods use embedding functions. 
+These methods argue data quality is not synonymous with data diversity in the context of GANs \citep{fowl2020random} and take a two-metric approach.
+Regarding LLMs, we argue that data diversity is a subset of data quality, which is demonstrably important to enable emergent capabilities such as in-context learning \cite{xie2022explanation, shin2022effect, chan2022data}. Recent work has also confirmed the importance of diversity from the perspective of deduplication \citep{tirumala2023d4}, and the general importance of quantitatively informed data selection \citep{xie2023doremi}.
+Hence, diversity metrics capture an important aspect of data quality.
+ 
+A recently proposed diversity metric that doesn't rely on an embedding function is the Vendi Score \citep{friedman2022vendi}, which is the exponential of the Shannon entropy of the eigenvalues of a similarity matrix/kernel. For more discussion of related work, please see Appendix \ref{related_work_cont}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

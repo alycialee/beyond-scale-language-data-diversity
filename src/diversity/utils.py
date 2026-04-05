@@ -74,3 +74,27 @@ def adjust_learning_rate(optimizer, epoch, optimizer_cfg):
 
 def get_device(model: torch.nn.Module):
     return next(model.parameters()).device
+
+
+def seed_everything(seed: int, hf_timeout: float = 5):
+    """
+    Seed all necessary libraries to ensure reproducible results.
+    """
+    import random
+    import numpy as np
+    import torch
+    from transformers import set_seed as hf_set_seed
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # If you use multi-GPU.
+    # Set deterministic behavior in torch
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Seed Hugging Face Transformers
+    if torch.cuda.is_available():
+        hf_set_seed(seed) # this gives a halting issue, so we are going to just not seed it
+    else:
+        print('Warning: HF is currently only dermisitic/seeded in gpu')

@@ -1,0 +1,123 @@
+% !TEX root = 00_dmlr_beyond_scale.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Beyond Scale: The Diversity Coefficient as a Data Quality Metric
+%  DMLR (Data-centric Machine Learning Research) submission
+%
+%  Organized structure:
+%    00_dmlr_beyond_scale.tex  — root file (this file)
+%    01_introduction.tex       — Introduction
+%    02_method.tex             — Method: Diversity Coefficient
+%    03_experiments.tex        — Experiments & Results
+%    04_related_work.tex       — Related Work
+%    05_discussion.tex         — Discussion
+%    98_acknowledgments.tex    — Acknowledgments
+%    99_appendix.tex           — Appendix (all supplementary sections)
+%
+%  Style:   dmlr2e.sty  (from https://github.com/JmlrOrg/dmlr-style-file)
+%  Bib:     dmlr_bib_refs.bib
+%  Figures: plots/
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[twoside,11pt]{article}
+\usepackage{dmlr2e}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation
+\input{math_commands.tex}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{url}
+
+% Required by dmlr2e.sty — fill in before camera-ready submission
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
+
+% Journal heading metadata — fill in before camera-ready submission
+% \dmlrheading{Volume}{Year}{pages}{submitted}{published}{id}{authors}
+
+% Running headers
+\ShortHeadings{Beyond Scale: The Diversity Coefficient}{Miranda, Lee, Sundar, Casasola, Schaeffer, Obadd \& Koyejo}
+
+\firstpageno{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\title{Beyond Scale: The Diversity Coefficient as a Data Quality Metric for Variability in Natural Language Data}
+
+\author{%
+  \name Brando Miranda\thanks{Correspondence to: \texttt{brando9@stanford.edu} and \texttt{sanmi@stanford.edu}}
+  \AND
+  \name Alycia Lee \AND
+  \name Sudharsan Sundar \AND
+  \name Allison Casasola \AND
+  \name Rylan Schaeffer \AND
+  \name Elyas Obadd \AND
+  \name Sanmi Koyejo \\
+  \addr Department of Computer Science, Stanford University, Stanford, CA 94305, USA \\
+  \texttt{\{brando9, alylee15, sjsundar, allyc, rschaef, eobbad, sanmi\}@stanford.edu}
+}
+
+\editor{Handling Editor: TBD}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+Current trends in pre-training Large Language Models (LLMs) primarily focus on the scaling of model and dataset size.
+While the \textit{quality} of pre-training data is considered an important factor for training powerful LLMs, it remains a nebulous concept that has not been rigorously characterized.
+To this end, we propose a formalization of one key aspect of data quality -- measuring the \textit{variability} of natural language data -- specifically via a measure we call the diversity coefficient.
+Our empirical analysis shows that the proposed diversity coefficient aligns with the intuitive properties of diversity and variability,
+e.g., it increases as the number of latent concepts increases.
+Then, we measure the diversity coefficient of publicly available pre-training datasets and demonstrate that their formal diversity is high compared to theoretical lower and upper bounds.
+Finally, we conduct a comprehensive set of controlled \textit{interventional} experiments with GPT-2 and LLaMAv2 that demonstrate the diversity coefficient of pre-training data characterizes useful aspects of downstream model evaluation performance---totaling 44 models of various sizes (51M to 7B parameters).
+We conclude that our formal notion of diversity is an important aspect of data quality that captures variability and causally leads to improved evaluation performance.
+\end{abstract}
+
+\begin{keywords}
+data quality, data diversity, diversity coefficient, Task2Vec, large language models, pre-training data, natural language processing
+\end{keywords}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Main sections
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{01_introduction}
+
+\input{02_method}
+
+\input{03_experiments}
+
+\input{04_related_work}
+
+\input{05_discussion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Broader Impact Statement (required for DMLR)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\impact{
+This work proposes the diversity coefficient as a quantitative metric for data quality in LLM pre-training.
+By making data diversity formally measurable, we enable researchers and practitioners to design more principled and transparent data curation pipelines.
+A potential concern is that diversity metrics could be gamed or misused to justify data collection practices that raise privacy or copyright issues; we encourage responsible use alongside appropriate data governance.
+All datasets used in this study are publicly available.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Acknowledgments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{98_acknowledgments}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{dmlr_bib_refs}
+\bibliographystyle{plainnat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Appendix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+
+\input{99_appendix}
+
+\end{document}
