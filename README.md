@@ -12,7 +12,7 @@ Paper: https://arxiv.org/abs/2306.13840
 This repository also contains code for generating GINC datasets and computing the Diversity Coefficient of those datasets (see `ginc/`).
 
 ## Getting Started
-`diversity/` contains the Task2Vec diversity coefficient computation for natural language data. [**See Quick-start**](https://github.com/alycialee/beyond-scale-language-data-diversity/blob/main/src/diversity/README.md#quick-start for a tutorial on computing the diversity coefficient for a language dataset. Run `diversity/runner.sh` to compute Task2Vec embeddings and diversity coefficient for c4, WikiText-103, and The Pile.
+`diversity/` contains the Task2Vec diversity coefficient computation for natural language data. [**See Quick-start**](https://github.com/alycialee/beyond-scale-language-data-diversity/blob/main/src/diversity/README.md#quick-start) for a tutorial on computing the diversity coefficient for a language dataset. Run `diversity/runner.sh` to compute Task2Vec embeddings and diversity coefficient for c4, WikiText-103, and The Pile.
 
 When cloning your main repository in the future, you will need to initialize the submodules as well by using:
 ```bash
