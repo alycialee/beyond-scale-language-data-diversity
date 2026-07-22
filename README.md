@@ -1,4 +1,4 @@
-actively maintained repo: https://github.com/brando90/beyond-scale-language-data-diversity
+actively maintained (master) repo: https://github.com/brando90/beyond-scale-div-coeff — this original repo and the brando90/beyond-scale-language-data-diversity fork are both outdated
 
 # Beyond Scale: the Diversity Coefficient as a Data Quality Metric for Natural Language Datasets
 
